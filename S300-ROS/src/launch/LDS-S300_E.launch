@@ -12,8 +12,8 @@
     <param name="topic_imu" value="imu" />
     <param name="output_imu" value="true"/>
    
-    <param name="lidar_port" value="6543" />
-    <param name="local_port" value="6668" />
-    <param name="lidar_ip" value="192.168.0.137" />
+    <param name="lidar_port" value="6001" />
+    <param name="local_port" value="6002" />
+    <param name="lidar_ip" value="192.168.137.200" />
   </node>
 </launch>

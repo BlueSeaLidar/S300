@@ -11,9 +11,9 @@ void LogDataCallback(uint32_t handle, const uint8_t dev_type, char *data, int le
 
 int main()
 {
-	char lidar_addr[] = "192.168.0.137";
-	int lidar_port = 6543;
-	int listen_port = 6668;
+	char lidar_addr[] = "192.168.137.200";
+	int lidar_port = 6001;
+	int listen_port = 6002;
 
 	PaceCatLidarSDK::getInstance()->Init();
 	int devID = PaceCatLidarSDK::getInstance()->AddLidar(lidar_addr, lidar_port, listen_port);
@@ -52,7 +52,7 @@ int main()
 
 	/*****************set lidar network(include check lidar isonline)**************************/
 	std::string in_lidar_ip="192.168.0.137";
-	std::string in_host_ip="192.168.0.123";;
+	std::string in_host_ip="192.168.0.123";
 	uint16_t in_lidar_port=6543;
 	uint16_t in_host_port=6669;
 	bool ret2 = PaceCatLidarSDK::getInstance()->SetLidarNetWork(devID, in_lidar_ip, in_lidar_port,in_host_ip,in_host_port);
