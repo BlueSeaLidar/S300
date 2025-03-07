@@ -414,12 +414,12 @@ void UDPThreadProc(int id)
 				imu_t->timestamp = imu_t->timestamp;
 				memcpy(&change_imu, imu_t, sizeof(fs_lidar_imu_t));
 				// std::cout << change_imu.timestamp << std::endl;
-				change_imu.acc_x = -imu_t->acc_x;
-				change_imu.acc_y = -imu_t->acc_z;
-				change_imu.acc_z = -imu_t->acc_y;
-				change_imu.gyro_x = -imu_t->gyro_x;
-				change_imu.gyro_y = -imu_t->gyro_z;
-				change_imu.gyro_z = -imu_t->gyro_y;
+				change_imu.acc_x = imu_t->acc_x;
+				change_imu.acc_y = imu_t->acc_y;
+				change_imu.acc_z = imu_t->acc_z;
+				change_imu.gyro_x = imu_t->gyro_x;
+				change_imu.gyro_y = imu_t->gyro_y;
+				change_imu.gyro_z = imu_t->gyro_z;
 				PaceCatLidarSDK::getInstance()->WriteImuData(cfg->ID, 0, &change_imu);
 			}
 			else if (head->data_type == 8)
