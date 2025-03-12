@@ -44,6 +44,7 @@ typedef struct
   int local_port;
 } ArgData;
 
+onePoi *p_point_data=NULL;
 void PointCloudCallback(uint32_t handle, const uint8_t dev_type, onePoi *data, void *client_data)
 {
   if (data == nullptr)
@@ -52,7 +53,11 @@ void PointCloudCallback(uint32_t handle, const uint8_t dev_type, onePoi *data, v
   }
    //printf("point cloud handle: %u, data_num: %d, data_type: %d, length: %d, frame_counter: %d\n",
    //handle, data->dot_num, data->data_type, data->length, data->frame_cnt);
- 
+    if(p_point_data==NULL)
+    	p_point_data = new onePoi[HEIGHT * WIDTH];
+    	
+    memcpy(p_point_data,data,sizeof(onePoi)*HEIGHT * WIDTH);
+    	
     onePoi *p_point_data = (onePoi *)data;
     ArgData *argdata = (ArgData *)client_data;
     if (argdata->output_pointcloud)
@@ -97,7 +102,7 @@ void PointCloudCallback(uint32_t handle, const uint8_t dev_type, onePoi *data, v
         point.y = p_point_data[i].pt3d.y;
         point.z = p_point_data[i].pt3d.z;
         point.reflectivity = p_point_data[i].reflectivity;
-        point.offset_time =  (data[0].timestamp- data[i].timestamp)%1000000;
+        point.offset_time =  (data[i].timestamp- data[0].timestamp)*1000;
         msg.points.push_back(point);
       }
       // printf("%d %d\n", N, msg.points.size());

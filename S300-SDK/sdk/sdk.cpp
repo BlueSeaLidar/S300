@@ -405,6 +405,7 @@ void UDPThreadProc(int id)
 				if (pro_data->frame_flag == 2)
 				{
 					PaceCatLidarSDK::getInstance()->WritePointCloud(cfg->ID, 0, m_oneFramePoi);
+					memset(m_oneFramePoi,0,sizeof(onePoi)*HEIGHT * WIDTH);
 				}
 			}
 			else if (head->data_type == 4)

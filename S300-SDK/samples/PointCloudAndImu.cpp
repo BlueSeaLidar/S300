@@ -1,10 +1,16 @@
 #include"../sdk/sdk.h"
 
-
+onePoi *p_point_data=NULL;
 void PointCloudCallback(uint32_t handle, const uint8_t dev_type, onePoi* data, void* client_data) {
 	if (data == nullptr) {
 		return;
 	}
+	if(p_point_data==NULL)
+    		p_point_data = new onePoi[HEIGHT * WIDTH];
+    	
+    	memcpy(p_point_data,data,sizeof(onePoi)*HEIGHT * WIDTH);
+    	
+	
 	// for(int i=0;i<WIDTH*HEIGHT;i++)
 	// {
 	// 	printf("point cloud handle: %u, idx:%d X: %lf, Y: %lf, Z: %lf, timestamp: %ld\n",
