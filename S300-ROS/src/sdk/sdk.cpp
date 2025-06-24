@@ -341,18 +341,38 @@ void UDPThreadProc(int id)
 		PaceCatLidarSDK::getInstance()->WriteLogData(cfg->ID, MSG_ERROR, (char *)err.c_str(), err.size());
 		return;
 	}
+	int tcp_cmd_fd = SystemAPI::open_tcp_socket_port(cfg->lidar_ip.c_str(), cfg->lidar_port);
+	if (tcp_cmd_fd <= 0)
+	{
+		std::string err = "tcp cmd port open failed";
+		PaceCatLidarSDK::getInstance()->WriteLogData(cfg->ID, MSG_ERROR, (char *)err.c_str(), err.size());
+		return;
+	}
 	onePoi *m_oneFramePoi = new onePoi[HEIGHT * WIDTH];
 	fs_lidar_imu_t change_imu;
 	uint16_t wait_idx = 0;
 	uint8_t PaceCat_idx = 0;
 	uint16_t nlen = 0;
 	int lastFrameidx = 0;
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	time_t tto = tv.tv_sec + 1;
+
 	while (cfg->run_state != QUIT)
 	{
 		if (cfg->run_state == OFFLINE)
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			continue;
+		}
+		gettimeofday(&tv, NULL);
+		if (tv.tv_sec > tto)
+		{
+			KeepAlive live;
+			live.world_clock.second = tv.tv_sec;
+			live.world_clock.nano_second = tv.tv_usec * 1000;
+			//CommunicationAPI::send_cmd_udp(tcp_cmd_fd, cfg->lidar_ip.c_str(), cfg->lidar_port, 0x00, rand(), 0x04, 0x18, &live);
+			tto = tv.tv_sec + 1;
 		}
 
 		uint8_t recv_buf[4096];
@@ -363,20 +383,22 @@ void UDPThreadProc(int id)
 		{
 
 			soc_head_t *head = (soc_head_t *)recv_buf;
-			if (head->data_type == 1)
+			if (head->data_type == 0x01 || head->data_type == 0x0C || head->data_type == 0x0D || head->data_type == 0x0E)
 			{
 				soc_protocol_data_t *pro_data = (soc_protocol_data_t *)(recv_buf + sizeof(soc_head_t));
 				uint16_t start_row = pro_data->row;
 				uint16_t start_col = pro_data->col;
 				uint32_t row = 0;
 				uint32_t col = 0;
-				uint16_t pixelcnt = pro_data->dot_num;
+				uint16_t pixelcnt = pro_data->dot_num * pro_data->echo_num;
 				uint16_t one_pixel_len = sizeof(soc_dis_pt_data_t);
 				int head_size = sizeof(soc_head_t) + sizeof(soc_protocol_data_t);
 
+				// std::string err = "row:"+std::to_string(start_row)+" col:"+std::to_string(start_col);
+				// PaceCatLidarSDK::getInstance()->WriteLogData(cfg->ID, MSG_ERROR, (char *)err.c_str(), err.size());
 				// MYLOG << pro_data->row << pro_data->col << pro_data->echo_num << pro_data->dot_num << pro_data->frame_flag << pro_data->data_sequence;
 
-				if ((pro_data->data_sequence - lastFrameidx != 1) && (lastFrameidx - pro_data->data_sequence != 450 - 1))
+				if ((pro_data->data_sequence - lastFrameidx != 1) && (pro_data->data_sequence != 1))
 				{
 					std::string err = "time: " + SystemAPI::getCurrentTime() + " drop package last index: " + std::to_string(lastFrameidx) + " now index:" + std::to_string(pro_data->data_sequence);
 					PaceCatLidarSDK::getInstance()->WriteLogData(cfg->ID, MSG_ERROR, (char *)err.c_str(), err.size());
@@ -384,10 +406,48 @@ void UDPThreadProc(int id)
 					continue;
 				}
 				lastFrameidx = pro_data->data_sequence;
-				for (int j = 0; j < UDP_PIXEL_NUM; j++) // 解析12个pixel
+				for (int j = 0; j < pixelcnt; j++)
 				{
-					row = start_row + j / 4;
-					col = start_col + j % 4;
+					if (head->data_type == 0x01)
+					{
+						row = start_row + j / 4;
+						col = start_col + j % 4;
+						if (row > HEIGHT - 1)
+							break;
+						if (col > WIDTH - 1)
+							break;
+					}
+					else if (head->data_type == 0x0C)
+					{
+						row = start_row / 2 + j / 2;
+						col = start_col / 2 + j % 2;
+						if (row > HEIGHT / 2 - 1)
+							break;
+						if (col > WIDTH / 2 - 1)
+							break;
+					}
+					else if (head->data_type == 0x0D)
+					{
+						//row = start_row + (j / 8) * 2;
+						//col = start_col + (j / 2) % 4;
+						row = start_row + j / 4;
+						col = start_col + j % 4;
+						if (row > HEIGHT - 1)
+							break;
+						if (col > WIDTH - 1)
+							break;
+					}
+					else if (head->data_type == 0x0E)
+					{
+						row = start_row + (j / 4) * 2;
+						col = start_col + j % 4;
+						if (row > HEIGHT - 1)
+							break;
+						if (col > WIDTH - 1)
+							break;
+					}
+					
+					
 					onePoi ptInfo;
 					memset(&ptInfo, 0, sizeof(onePoi));
 					ptInfo.row_pos = row;
@@ -405,7 +465,7 @@ void UDPThreadProc(int id)
 				if (pro_data->frame_flag == 2)
 				{
 					PaceCatLidarSDK::getInstance()->WritePointCloud(cfg->ID, 0, m_oneFramePoi);
-					memset(m_oneFramePoi,0,sizeof(onePoi)*HEIGHT * WIDTH);
+					memset(m_oneFramePoi, 0, sizeof(onePoi) * HEIGHT * WIDTH);
 				}
 			}
 			else if (head->data_type == 4)

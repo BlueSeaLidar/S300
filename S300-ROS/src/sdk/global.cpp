@@ -441,6 +441,54 @@ uint8_t check_value(const char *buf, int len)
     }
     return  checksum&0xff;
 }
+void CommunicationAPI::send_cmd_udp(int fd_udp, const char* dev_ip, int dev_port,uint16_t version, uint16_t msgid,uint16_t cmd,uint32_t len, const void* snd_buf)
+{
+    char buffer[2048];
+    CmdHeader* hdr = (CmdHeader*)buffer;
+    hdr->sign = 0x484c;
+    hdr->ver=version;
+    hdr->cmd = cmd;
+    hdr->msgid = msgid;
+    hdr->len = len;
+
+    memcpy(buffer + sizeof(CmdHeader), snd_buf, len);
+
+    //校验位置
+    buffer[len+sizeof(CmdHeader)] = check_value(buffer,len+sizeof(CmdHeader));
+
+    sockaddr_in to;
+    to.sin_family = AF_INET;
+    to.sin_addr.s_addr = inet_addr(dev_ip);
+    to.sin_port = htons(dev_port);
+
+    int len2 = len + sizeof(CmdHeader) +1;
+
+    sendto(fd_udp, buffer, len2, 0, (struct sockaddr*)&to, sizeof(struct sockaddr));
+}
+int SystemAPI::open_tcp_socket_port(const char* lidar_tcp_ip,int lidar_tcp_port)
+{
+    int  fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if(fd<=0)
+    {
+        return -1;
+    }
+
+    struct sockaddr_in stRemoteAddr;
+    stRemoteAddr.sin_family = AF_INET;
+    stRemoteAddr.sin_addr.s_addr = inet_addr(lidar_tcp_ip);
+    stRemoteAddr.sin_port = htons(lidar_tcp_port);
+
+    //ioctlsocket(fd, FIONBIO, &mode); /*!<默认为堵塞模式,设置为非阻塞模式,成功返回0 */
+    //连接方法： 传入句柄，目标地址，和大小
+    if(::connect(fd, (sockaddr *)&stRemoteAddr, sizeof(stRemoteAddr))<0)
+    {
+            return -1;
+    }
+    //ioctlsocket(fd, FIONBIO, &mode);
+    return fd;
+
+}
+
 void HexToChar(std::string data, char*result)
 {
     int nValude = 0;

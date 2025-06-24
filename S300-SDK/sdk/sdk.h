@@ -9,7 +9,7 @@
 #include<string>
 #include"protocol.h"
 #include "FsTcpTransControl.h"
-#define S300_E_SDKVERSION "V1.0_20250107" // SDK版本号
+#define S300_E_SDKVERSION "V1.2_20250606" // SDK版本号
 
 
 typedef struct

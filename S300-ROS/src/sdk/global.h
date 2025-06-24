@@ -37,20 +37,18 @@ namespace BaseAPI {
 
 namespace SystemAPI{
 int open_socket_port(int port,bool isRepeat);
+int open_tcp_socket_port(const char* lidar_tcp_ip,int lidar_tcp_port);
+
 int closefd(int __fd,bool isSocket);
 int getLastError();
 uint64_t GetTimeStamp(timeval* tv,bool isTimeStamp_M);
 std::string getCurrentTime();
 }
 namespace CommunicationAPI {
-	void  send_cmd_udp(int fd_udp, const char* dev_ip, int dev_port, int cmd, int sn, int len, const void* snd_buf);
 	bool udp_talk_pack(int fd_udp, const char * lidar_ip, int lidar_port, int send_len, const char * send_buf, int mode, int & recv_len, char * recv_buf, int delay=3, int delaynum=10000);
-}
+    void send_cmd_udp(int fd_udp, const char* dev_ip, int dev_port,uint16_t version, uint16_t msgid,uint16_t cmd,uint32_t len, const void* snd_buf);
+}  
 
-
-
-
-void send_cmd_udp(int fd_udp, const char* dev_ip, int dev_port, int cmd, int sn, int len, const void* snd_buf);
 void GetTimeStamp(timeval* tv,TIME_ST *timest);
 void DecTimestamp(uint32_t ts, uint32_t* ts2);
 void HexToChar(std::string data, char*result);

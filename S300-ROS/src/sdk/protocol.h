@@ -11,7 +11,14 @@
 #define UDP_PIXEL_NUM 120
 #pragma pack(push, 1)
 
-
+	struct CmdHeader
+	{
+		unsigned short sign; //CN:与硬件约定的标志位						EN:Flags consistent with hardware
+		unsigned short ver;
+		unsigned short msgid;//消息ID
+		unsigned short cmd;	 //CN:命令										EN：command
+		unsigned int len;	//CN:命令长度									EN:command length
+	};
 struct Point3D
     {
         double x;
@@ -88,7 +95,7 @@ struct Point3D
         float acc_y;  // Unit:g
         float acc_z;  // Unit:g
     } fs_lidar_imu_t;
-#pragma pack(pop)
+
 
 typedef struct
 {
@@ -96,7 +103,12 @@ typedef struct
 	uint32_t nano_second;
 }TIME_ST;
 
-
+struct KeepAlive {
+		TIME_ST world_clock;//毫秒级时间戳
+		TIME_ST arrive_time;//包数据主机到雷达的时间(内部使用)
+		TIME_ST delay_time;//延迟时间(内部使用)
+	};
+#pragma pack(pop)
 typedef void(*LidarCloudPointCallback) (uint32_t handle, const uint8_t dev_type, onePoi*data, void *client_data);
 typedef void(*LidarImuDataCallback)(uint32_t handle, const uint8_t dev_type, fs_lidar_imu_t* data, void* client_data);
 typedef void(*LidarLogDataCallback)(uint32_t handle, const uint8_t dev_type, char* data, int len);
