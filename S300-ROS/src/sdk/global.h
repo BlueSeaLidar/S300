@@ -49,7 +49,6 @@ namespace CommunicationAPI {
     void send_cmd_udp(int fd_udp, const char* dev_ip, int dev_port,uint16_t version, uint16_t msgid,uint16_t cmd,uint32_t len, const void* snd_buf);
 }  
 
-void GetTimeStamp(timeval* tv,TIME_ST *timest);
 void DecTimestamp(uint32_t ts, uint32_t* ts2);
 void HexToChar(std::string data, char*result);
 void CharToHex(unsigned char*data,int length, std::string &result);

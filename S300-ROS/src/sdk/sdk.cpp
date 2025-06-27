@@ -348,16 +348,20 @@ void UDPThreadProc(int id)
 		PaceCatLidarSDK::getInstance()->WriteLogData(cfg->ID, MSG_ERROR, (char *)err.c_str(), err.size());
 		return;
 	}
+	
 	onePoi *m_oneFramePoi = new onePoi[HEIGHT * WIDTH];
+	
 	fs_lidar_imu_t change_imu;
+	
 	uint16_t wait_idx = 0;
 	uint8_t PaceCat_idx = 0;
 	uint16_t nlen = 0;
 	int lastFrameidx = 0;
 	struct timeval tv;
-	GetTimeStamp(&tv, NULL);
+	SystemAPI::GetTimeStamp(&tv, NULL);
+	
 	time_t tto = tv.tv_sec + 1;
-
+	
 	while (cfg->run_state != QUIT)
 	{
 		if (cfg->run_state == OFFLINE)
@@ -365,7 +369,7 @@ void UDPThreadProc(int id)
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			continue;
 		}
-		GetTimeStamp(&tv, NULL);
+		SystemAPI::GetTimeStamp(&tv, NULL);
 		if (tv.tv_sec > tto)
 		{
 			KeepAlive live;
@@ -471,16 +475,8 @@ void UDPThreadProc(int id)
 			else if (head->data_type == 4)
 			{
 				fs_lidar_imu_t *imu_t = (fs_lidar_imu_t *)(recv_buf + sizeof(soc_head_t));
-				// std::cout << imu_t->timestamp << std::endl;
 				imu_t->timestamp = imu_t->timestamp;
 				memcpy(&change_imu, imu_t, sizeof(fs_lidar_imu_t));
-				// std::cout << change_imu.timestamp << std::endl;
-				change_imu.acc_x = imu_t->acc_x;
-				change_imu.acc_y = imu_t->acc_y;
-				change_imu.acc_z = imu_t->acc_z;
-				change_imu.gyro_x = imu_t->gyro_x;
-				change_imu.gyro_y = imu_t->gyro_y;
-				change_imu.gyro_z = imu_t->gyro_z;
 				PaceCatLidarSDK::getInstance()->WriteImuData(cfg->ID, 0, &change_imu);
 			}
 			else if (head->data_type == 8)

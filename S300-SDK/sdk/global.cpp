@@ -499,21 +499,6 @@ void HexToChar(std::string data, char*result)
     }
 }
 
-void GetTimeStamp(timeval *tv, TIME_ST *timest)
-{
-#ifdef _WIN32
-    SYSTEMTIME st;
-    GetLocalTime(&st);
-
-    tv->tv_sec = (long)time(NULL);
-    tv->tv_usec = st.wMilliseconds;
-#elif __linux
-    gettimeofday(tv,NULL);
-#endif
-    timest->second=tv->tv_sec;
-    timest->nano_second=tv->tv_usec*1000;
-}
-
 uint64_t SystemAPI::GetTimeStamp(timeval *tv, bool isTimeStamp_M)
 {
 #ifdef _WIN32
