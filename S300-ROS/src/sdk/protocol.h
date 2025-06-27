@@ -1,5 +1,5 @@
-#ifndef M300_E_PROTOCOL_H
-#define M300_E_PROTOCOL_H
+﻿#ifndef S300_E_PROTOCOL_H
+#define S300_E_PROTOCOL_H
 
 #include"define.h"
 

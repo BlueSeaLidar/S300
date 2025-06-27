@@ -334,8 +334,6 @@ bool BaseAPI::checkAndMerge(int type, char * ip, char * mask, char * gateway, in
 	return false;
 }
 
-
-
 int SystemAPI::open_socket_port(int port,bool isRepeat)
 {
 #ifdef _WIN32

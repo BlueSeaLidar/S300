@@ -355,7 +355,7 @@ void UDPThreadProc(int id)
 	uint16_t nlen = 0;
 	int lastFrameidx = 0;
 	struct timeval tv;
-	gettimeofday(&tv, NULL);
+	GetTimeStamp(&tv, NULL);
 	time_t tto = tv.tv_sec + 1;
 
 	while (cfg->run_state != QUIT)
@@ -365,7 +365,7 @@ void UDPThreadProc(int id)
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			continue;
 		}
-		gettimeofday(&tv, NULL);
+		GetTimeStamp(&tv, NULL);
 		if (tv.tv_sec > tto)
 		{
 			KeepAlive live;

@@ -24,7 +24,7 @@ function(my_add_executable)
 endfunction(my_add_executable)
 
 #工程名称
-project(M300_SDK)
+project(S300_SDK)
 #C++98  C99
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_C_STANDARD 99)
