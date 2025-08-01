@@ -33,6 +33,9 @@ namespace BaseAPI {
 	bool mask_check(const char *mask);
 	bool mac_check(const char *mac);
 	bool checkAndMerge(int type, char*ip, char*mask, char*gateway, int port, char*result);
+    uint8_t check_value(const char *buf, int len);
+    std::string generate_cmd(uint16_t version, uint16_t msgid, uint16_t cmd, uint32_t len, const void* snd_buf);
+    std::string generate_cmd2(uint16_t arg_type, uint16_t arg_len, char*arg_buf);
 }
 
 namespace SystemAPI{
@@ -41,7 +44,8 @@ int open_tcp_socket_port(const char* lidar_tcp_ip,int lidar_tcp_port);
 
 int closefd(int __fd,bool isSocket);
 int getLastError();
-uint64_t GetTimeStamp(timeval* tv,bool isTimeStamp_M);
+uint64_t GetTimeStamp_us(bool isTimeStamp_us);
+uint64_t GetTimeStamp(timeval *tv, bool isTimeStamp_us);
 std::string getCurrentTime();
 }
 namespace CommunicationAPI {

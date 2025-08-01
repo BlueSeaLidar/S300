@@ -6,10 +6,17 @@
 #define WIDTH 360
 #define HEIGHT 150
 #define FL7901_HIST_BIN_NUM 288
+#define HEARTPORT  6789
 
 
 #define UDP_PIXEL_NUM 120
 #pragma pack(push, 1)
+
+typedef struct
+{
+	uint32_t second;
+	uint32_t nano_second;
+}TIME_ST;
 
 	struct CmdHeader
 	{
@@ -79,32 +86,133 @@ struct Point3D
         uint8_t reflect; // 当前回波的反射率
         uint8_t label;	 // 保留，跟点云测量到的实际物体有关，如雨雾、灰尘等
     } soc_dis_pt_data_t;
-    typedef struct fs_lidar_imu
-    {
-        uint8_t crc8_1;
-        uint8_t crc8_2;
-        uint8_t version;
+
+
+    typedef struct {
+        uint8_t  crc8_header;
+        uint8_t  crc8_imu_dat;
+        uint8_t  version;
         uint16_t len;
-        uint8_t time_type;
-        uint64_t timestamp; // Unit:ns
-        uint8_t reserved[2];
+        uint8_t  time_type;
+        int64_t  timestamp;
+        int16_t  temperature;   // Unit: 1/256 ℃
+        uint8_t  data[0];
+     } fs_lidar_imu_header_t;
+
+    typedef struct 
+    {
         float gyro_x; // Unit:rad/s
         float gyro_y; // Unit:rad/s
         float gyro_z; // Unit:rad/s
         float acc_x;  // Unit:g
         float acc_y;  // Unit:g
         float acc_z;  // Unit:g
+    } fs_lidar_imu_v2;
+
+    typedef struct 
+    {
+        float pitch;
+        float roll;
+        float yaw;
+        float gyro_x; // Unit:rad/s
+        float gyro_y; // Unit:rad/s
+        float gyro_z; // Unit:rad/s
+        float acc_x;  // Unit:g
+        float acc_y;  // Unit:g
+        float acc_z;  // Unit:g
+    } fs_lidar_imu_v3;
+
+    typedef struct 
+    {
+        int64_t  timestamp;
+        uint8_t  version;
+        float pitch;
+        float roll;
+        float yaw;
+        float gyro_x; // Unit:rad/s
+        float gyro_y; // Unit:rad/s
+        float gyro_z; // Unit:rad/s
+        float acc_x;  // Unit:g
+        float acc_y;  // Unit:g
+        float acc_z;  // Unit:g
+        
     } fs_lidar_imu_t;
 
+struct DEV_CFG_ST
+    {
+        uint16_t cfg_ver;  /* 参数结构体版本号 */
 
-typedef struct
-{
-	uint32_t second;
-	uint32_t nano_second;
-}TIME_ST;
+        char dev_type[16];  /* LDS-S00 */
+        char dev_sn[32];  /* 设备 SN 号 */
+        uint32_t dev_id_num; /* 设备 ID 号 */
+
+        uint32_t soft_ver;  /* 软件版本号 */
+        uint32_t hard_ver;  /* 硬件版本号 */
+
+        uint8_t local_ip[4];  /* 本地 ip */
+        uint8_t local_mask[4];
+        uint8_t local_gateway[4];
+        uint16_t local_port;  /* 设备控制端口 */
+
+        uint8_t upload_ip[4];  /* 上传目标 ip */
+        uint16_t upload_port;  /* 上传目标 端口 */
+        uint16_t upload_point_clound_en : 3;
+        uint16_t upload_dev_status_en : 1;
+        uint16_t upload_alarm_info_en : 1;
+        uint16_t upload_type_reserve : 11;
+
+        float imu_offset_acc_x;  /* imu 零位校准参数 */
+        float imu_offset_acc_y;
+        float imu_offset_acc_z;
+        float imu_offset_gyro_x;
+        float imu_offset_gyro_y;
+        float imu_offset_gyro_z;
+
+        float imu_waican[3][3];
+
+        uint16_t dist_filter_en : 1;
+        uint16_t energy_filter_en : 1;
+        uint16_t time_filter_en : 1;
+        uint16_t dev_en_reserve : 13;
+        uint8_t energy_filter_with_dist;
+        uint8_t energy_filter_min;
+        uint16_t dist_filter_min;
+        uint16_t dist_filter_max;
+
+        uint8_t alarm_event_io_map[16];  /* 报警事件与 IO 映射 */
+        uint8_t alarm_event_io_output_mode_pnp_npn;
+
+        uint16_t zone_detect_alg_para_min_frame;  /* 防区检测圈数滤波 */
+        uint16_t zone_detect_alg_para_min_points;  /* 防区检测点数滤波 */
+        uint16_t zone_detect_alg_abnormal_point_split_min_num;  /* 异常点云分割点数 */
+
+        uint8_t reserve[433];
+
+    };
+    typedef struct
+    {
+        char protocol_header[2];//协议头  默认LD
+        uint16_t protocol_ver;//协议版本
+        TIME_ST timestamp;
+        unsigned char dev_sn[20];//sn号
+        unsigned char dev_type[16];//设备型号
+        uint32_t software_ver;//软件版本号
+        uint32_t dev_id;//设备ID
+        uint8_t  ip[4];
+        uint8_t  mask[4];
+        uint8_t  gateway[4];
+        uint16_t listen_port;//服务端口
+        uint8_t  remote_ip[4];//上传IP
+        uint16_t remote_port;//上传端口
+        uint32_t status;//状态
+        char reserve[20];
+        uint32_t crc;
+    } DevHeart;
+
+
 
 struct KeepAlive {
-		TIME_ST world_clock;//毫秒级时间戳
+		TIME_ST world_clock;//纳秒级时间戳
 		TIME_ST arrive_time;//包数据主机到雷达的时间(内部使用)
 		TIME_ST delay_time;//延迟时间(内部使用)
 	};

@@ -1,15 +1,30 @@
 #include"../sdk/sdk.h"
-
+#include"../sdk/global.h"
 onePoi *p_point_data=NULL;
+uint64_t lasttime=0;
+int idx=0;
 void PointCloudCallback(uint32_t handle, const uint8_t dev_type, onePoi* data, void* client_data) {
 	if (data == nullptr) {
 		return;
 	}
 	if(p_point_data==NULL)
-    		p_point_data = new onePoi[HEIGHT * WIDTH];
+    	p_point_data = new onePoi[HEIGHT * WIDTH];
     	
-    	memcpy(p_point_data,data,sizeof(onePoi)*HEIGHT * WIDTH);
-    	
+    memcpy(p_point_data,data,sizeof(onePoi)*HEIGHT * WIDTH);
+
+
+	// if(idx==0)
+	// {
+	// 	lasttime= SystemAPI::GetTimeStamp_us(true);
+	// }
+
+	// if(idx%20==0 && idx!=0)
+	// {
+	// 	uint64_t timetsamp = SystemAPI::GetTimeStamp_us(true);
+	// 	printf("111:%d %d\n",timetsamp-lasttime,idx);
+	// 	lasttime=timetsamp;
+	// }
+	// idx++;
 	
 	// for(int i=0;i<WIDTH*HEIGHT;i++)
 	// {
@@ -22,6 +37,18 @@ void ImuDataCallback(uint32_t handle, const uint8_t dev_type, fs_lidar_imu_t* da
 	if (data == nullptr) {
 		return;
 	}
+	if(idx==0)
+	{
+		lasttime= SystemAPI::GetTimeStamp_us(true);
+	}
+
+	if(idx%10==0 && idx!=0)
+	{
+		uint64_t timetsamp = SystemAPI::GetTimeStamp_us(true);
+		printf("111:%d %d\n",timetsamp-lasttime,idx);
+		lasttime=timetsamp;
+	}
+	idx++;
 	// printf("Imu data callback handle:%u, acc_x:%f, acc_y:%f acc_z:%f gyro_x:%f gyro_y:%f gyro_z:%f\n",
 	// 	handle, data->acc_x,data->acc_y,data->acc_z,data->gyro_x,data->gyro_y,data->gyro_z);
 }
@@ -35,8 +62,8 @@ void LogDataCallback(uint32_t handle, const uint8_t dev_type, char* data, int le
 
 int main()
 {
-	char lidar_addr[] = "192.168.137.200";
-	int lidar_port = 6001;
+	char lidar_addr[] = "192.168.0.247";
+	int lidar_port = 6543;
 	int listen_port = 6002;
 	PaceCatLidarSDK::getInstance()->Init();
 	int devID = PaceCatLidarSDK::getInstance()->AddLidar(lidar_addr, lidar_port, listen_port);
@@ -65,5 +92,5 @@ int main()
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 	}
-	PaceCatLidarSDK::getInstance()->Uninit();
+	PaceCatLidarSDK::getInstance()->deleteInstance();
 }

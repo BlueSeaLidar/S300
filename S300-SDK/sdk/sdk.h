@@ -9,7 +9,9 @@
 #include<string>
 #include"protocol.h"
 #include "FsTcpTransControl.h"
-#define S300_E_SDKVERSION "V1.2_20250606" // SDK版本号
+#include"../3rdparty/concurrentqueue/concurrentqueue.h"
+using namespace moodycamel;
+#define S300_E_SDKVERSION "V1.3_20250730" // SDK版本号
 
 
 typedef struct
@@ -81,9 +83,8 @@ enum LidarMsg
 struct RunConfig
 {
 	int ID;
-	std::thread  thread_subData;
-	//std::thread  thread_pubCloud;
-	//std::thread  thread_pubImu;
+	std::thread  thread_recv;
+	std::thread  thread_parse;
 	LidarCloudPointCallback  cb_cloudpoint;
 	void *cloudpoint;
 	LidarImuDataCallback cb_imudata;
@@ -94,6 +95,8 @@ struct RunConfig
 	std::string lidar_ip;
 	int lidar_port;
 	int listen_port;
+	int tcp_cmd_fd;
+	int udp_data_fd;
 	//std::vector<LidarCloudPointData> cloud_data;
 	//std::queue<IIM42652_FIFO_PACKET_16_ST> imu_data;
 	uint32_t frame_cnt;
@@ -104,6 +107,7 @@ struct RunConfig
 	std::string send_buf;
 	int recv_len;
 	std::string recv_buf;
+	ConcurrentQueue<std::string> data_queue;
 
 };
 class PaceCatLidarSDK
@@ -159,15 +163,29 @@ public:
 	 *	set lidar    ip  mask  gateway  receive port
 	 */
 	bool SetLidarNetWork(int ID, std::string in_lidar_ip,uint16_t in_lidar_port,std::string in_host_ip,uint16_t in_host_port);
+	/*
+	*	set yaw angle
+	*/
+	bool SetYawAngle(int ID,int yaw);
 
+	bool SetTimeStampSync(int ID);
 
-
+	/*
+	*	set yaw angle
+	*/
+	
 	int QueryIDByIp(std::string ip);
 	RunConfig*getConfig(int ID);
 protected:
 
 private:
-	
+	void UDPThreadRecv(int id);
+	void UDPThreadParse(int id);
+
+	void HeartThreadProc();
+
+	bool TalkWithTCP(int tcp_cmd_fd,int waittime,const std::string sendbuf,std::string &recvbuf);
+	bool SetTimeSync(int fd);
 private:
 	static PaceCatLidarSDK *m_sdk;
 	PaceCatLidarSDK();
@@ -182,9 +200,9 @@ private:
 	int64_t sidx = 0;
 	int64_t imu_idx = 0;
 	int m_currentframeidx{ 0 };
-};
 
-void UDPThreadProc(int id);
+	HeartInfo heartinfo;
+};
 
 
 

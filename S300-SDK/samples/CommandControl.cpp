@@ -11,27 +11,14 @@ void LogDataCallback(uint32_t handle, const uint8_t dev_type, char *data, int le
 
 int main()
 {
-	char lidar_addr[] = "192.168.137.200";
-	int lidar_port = 6001;
+	char lidar_addr[] = "192.168.0.247";
+	int lidar_port = 6543;
 	int listen_port = 6002;
-
 	PaceCatLidarSDK::getInstance()->Init();
+
 	int devID = PaceCatLidarSDK::getInstance()->AddLidar(lidar_addr, lidar_port, listen_port);
+	PaceCatLidarSDK::getInstance()->ConnectLidar(devID);
 	PaceCatLidarSDK::getInstance()->SetLogDataCallback(devID, LogDataCallback, nullptr);
-
-	/***********************check lidar isonline**********************************/
-
-	int state = PaceCatLidarSDK::getInstance()->QueryDeviceState(devID);
-	if (state == ONLINE)
-	{
-		printf("lidar online\n");
-	}
-	else
-	{
-		printf("lidar offline\n");
-		return -1;
-	}
-
 	/*****************query lidar network(include check lidar isonline)**************************/
 	fs_ipport_t info;
 	bool ret = PaceCatLidarSDK::getInstance()->QueryBaseInfo(devID, lidar_addr, info);
@@ -49,7 +36,12 @@ int main()
 		host_ip_str.assign(ip_str_result2, 16);
 		printf("lidar_ip:%s lidar_port:%d host_ip:%s  host_port:%d\n", lidar_ip_str.c_str(), info.lidar_port, host_ip_str.c_str(), info.host_port);
 	}
-
+	ret = PaceCatLidarSDK::getInstance()->SetYawAngle(devID,200);
+	if(ret)
+	{
+		printf("set yaw angle ok\n");
+	}
+#if 0
 	/*****************set lidar network(include check lidar isonline)**************************/
 	std::string in_lidar_ip="192.168.0.137";
 	std::string in_host_ip="192.168.0.123";
@@ -60,9 +52,17 @@ int main()
 	{
 		printf("set lidar network ok,please restart power\n");
 	}
+#endif
 	while (1)
 	{
-		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000 * 2));
+		int state = PaceCatLidarSDK::getInstance()->QueryDeviceState(devID);
+		if (state == ONLINE)
+			printf("lidar online\n");
+		else
+			printf("lidar offline\n");
+
+		printf("lidar timestamp sync:%d\n",PaceCatLidarSDK::getInstance()->SetTimeStampSync(devID));
 	}
-	PaceCatLidarSDK::getInstance()->Uninit();
+	PaceCatLidarSDK::getInstance()->deleteInstance();
 }

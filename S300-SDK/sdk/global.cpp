@@ -91,6 +91,22 @@ void DecTimestamp(uint32_t ts, uint32_t* ts2)
 
     ts2[1] = (ts % 1000) * 1000;
 }
+uint64_t SystemAPI::GetTimeStamp(timeval *tv, bool isTimeStamp_us)
+{
+#ifdef _WIN32
+    SYSTEMTIME st;
+    GetLocalTime(&st);
+
+    tv->tv_sec = (long)time(NULL);
+    tv->tv_usec = st.wMilliseconds;
+#elif __linux
+    gettimeofday(tv,NULL);
+#endif
+    if(isTimeStamp_us)
+        return tv->tv_sec*1000000+tv->tv_usec;
+    else
+        return tv->tv_sec;
+}
 
 
 std::string BaseAPI::stringfilter(char *str, int num)
@@ -499,21 +515,22 @@ void HexToChar(std::string data, char*result)
     }
 }
 
-uint64_t SystemAPI::GetTimeStamp(timeval *tv, bool isTimeStamp_M)
+uint64_t SystemAPI::GetTimeStamp_us(bool isTimeStamp_us)
 {
+	timeval tv;
 #ifdef _WIN32
     SYSTEMTIME st;
     GetLocalTime(&st);
 
-    tv->tv_sec = (long)time(NULL);
-    tv->tv_usec = st.wMilliseconds;
+    tv.tv_sec = (long)time(NULL);
+    tv.tv_usec = st.wMilliseconds;
 #elif __linux
-    gettimeofday(tv,NULL);
+    gettimeofday(&tv,NULL);
 #endif
-    if(isTimeStamp_M)
-        return tv->tv_sec*1000+tv->tv_usec/1000;
+    if(isTimeStamp_us)
+        return tv.tv_sec*1000000+tv.tv_usec;
     else
-        return tv->tv_sec;
+        return tv.tv_sec;
 }
 
 #include<chrono>
@@ -531,4 +548,39 @@ bool is_ip(const std::string& ip)
 {
     std::regex ipRegex("^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$");
     return std::regex_match(ip, ipRegex);
+}
+
+uint8_t BaseAPI::check_value(const char *buf, int len)
+{
+    int checksum=0;
+    for(int i=0;i<len;i++)
+    {
+        checksum+=buf[i];
+    }
+    return  checksum&0xff;
+}
+std::string BaseAPI::generate_cmd(uint16_t version, uint16_t msgid, uint16_t cmd, uint32_t len, const void* snd_buf)
+{
+    char buffer[2048];
+    CmdHeader* hdr = (CmdHeader*)buffer;
+    hdr->sign = 0x484c;
+    hdr->ver = version;
+    hdr->cmd = cmd;
+    hdr->msgid = msgid;
+    hdr->len = len;
+    memcpy(buffer + sizeof(CmdHeader), snd_buf, len);
+    //校验位置
+    buffer[len + sizeof(CmdHeader)] =  BaseAPI::check_value(buffer, len + sizeof(CmdHeader));
+    int len2 = len + sizeof(CmdHeader) + 1;
+    return std::string(buffer, len2);
+}
+std::string BaseAPI::generate_cmd2(uint16_t arg_type, uint16_t arg_len, char*arg_buf)
+{
+    char cmd[1024] = { 0 };
+    memcpy(cmd, &arg_type, 2);
+    memcpy(cmd + 2, &arg_len, 2);
+    memcpy(cmd + 4, arg_buf, arg_len);
+    int cmd_len = 4 + arg_len;
+    return generate_cmd(0x00, rand(), 0x02, cmd_len, cmd);
+
 }
