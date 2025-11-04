@@ -8,6 +8,8 @@
 #include<iostream>
 #include<string>
 #include<regex>
+#include <cstdlib>
+#include <cstring>
 #include"protocol.h"
 
 
@@ -36,6 +38,7 @@ namespace BaseAPI {
     uint8_t check_value(const char *buf, int len);
     std::string generate_cmd(uint16_t version, uint16_t msgid, uint16_t cmd, uint32_t len, const void* snd_buf);
     std::string generate_cmd2(uint16_t arg_type, uint16_t arg_len, char*arg_buf);
+    std::vector<uint8_t> split_ip_to_bytes_method3(const std::string& ip_str) ;
 }
 
 namespace SystemAPI{
@@ -49,7 +52,7 @@ uint64_t GetTimeStamp(timeval *tv, bool isTimeStamp_us);
 std::string getCurrentTime();
 }
 namespace CommunicationAPI {
-	bool udp_talk_pack(int fd_udp, const char * lidar_ip, int lidar_port, int send_len, const char * send_buf, int mode, int & recv_len, char * recv_buf, int delay=3, int delaynum=10000);
+	bool udp_talk_pack(int fd_udp, const char * lidar_ip, int lidar_port, int send_len, const char * send_buf, int & recv_len, char * recv_buf, int delay=3, int delaynum=10000);
     void send_cmd_udp(int fd_udp, const char* dev_ip, int dev_port,uint16_t version, uint16_t msgid,uint16_t cmd,uint32_t len, const void* snd_buf);
 }  
 

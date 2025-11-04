@@ -28,9 +28,9 @@ typedef struct
 	};
 struct Point3D
     {
-        double x;
-        double y;
-        double z;
+        float x;
+        float y;
+        float z;
     };
     struct onePoi
     {
@@ -209,15 +209,51 @@ struct DEV_CFG_ST
         uint32_t crc;
     } DevHeart;
 
-
-
 struct KeepAlive {
 		TIME_ST world_clock;//纳秒级时间戳
 		TIME_ST arrive_time;//包数据主机到雷达的时间(内部使用)
 		TIME_ST delay_time;//延迟时间(内部使用)
 	};
+
+
+typedef struct
+{
+  union
+  {
+    struct
+    {
+      uint32_t zone_observe : 1;
+      uint32_t zone_warning : 1;
+      uint32_t zone_alarm : 1;
+      uint32_t zone_cfg_invalid : 1;
+      uint32_t tx_tem_h : 1;
+      uint32_t rx_tem_h : 1;
+      uint32_t tx_vol_h : 1;
+      uint32_t tx_vol_l : 1;
+      uint32_t rx_vol_h : 1;
+      uint32_t rx_vol_l : 1;
+      uint32_t no_cali_table : 1;
+      uint32_t data_is_zero : 1;
+      uint32_t no_imu_data : 1;
+
+      uint32_t reserved : 19;
+    };
+    uint32_t events;
+  };
+}__attribute__ ((packed)) PROCOTOL_ALARM_EVENTS_ST;
+
+typedef struct
+{
+  uint16_t id;  /* 计数 id */
+  uint8_t actived_zone_num;  /* 当前激活防区 0x00-0x0F */
+  uint8_t reserve;
+  PROCOTOL_ALARM_EVENTS_ST events;  /* 报警事件 */
+  uint8_t reserved[300];
+}__attribute__ ((packed)) PROTOCOL_DATA_PACK_ALARM_ST;
+
+
 #pragma pack(pop)
-typedef void(*LidarCloudPointCallback) (uint32_t handle, const uint8_t dev_type, onePoi*data, void *client_data);
+typedef void(*LidarCloudPointCallback) (uint32_t handle, const uint8_t dev_type, onePoi*data,uint16_t num,void *client_data);
 typedef void(*LidarImuDataCallback)(uint32_t handle, const uint8_t dev_type, fs_lidar_imu_t* data, void* client_data);
 typedef void(*LidarLogDataCallback)(uint32_t handle, const uint8_t dev_type, char* data, int len);
 

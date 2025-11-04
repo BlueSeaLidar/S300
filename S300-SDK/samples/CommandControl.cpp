@@ -1,4 +1,4 @@
-#include "../sdk/sdk.h"
+#include "../sdk/pacecatlidarsdk.h"
 
 void LogDataCallback(uint32_t handle, const uint8_t dev_type, char *data, int len)
 {
@@ -11,17 +11,18 @@ void LogDataCallback(uint32_t handle, const uint8_t dev_type, char *data, int le
 
 int main()
 {
-	char lidar_addr[] = "192.168.0.247";
+	char lidar_addr[] = "192.168.0.223";
 	int lidar_port = 6543;
-	int listen_port = 6002;
-	PaceCatLidarSDK::getInstance()->Init();
+	int listen_port = 6668;
+	std::string adapter = "ens38";
+	PaceCatLidarSDK::getInstance()->Init(adapter);
 
 	int devID = PaceCatLidarSDK::getInstance()->AddLidar(lidar_addr, lidar_port, listen_port);
 	PaceCatLidarSDK::getInstance()->ConnectLidar(devID);
 	PaceCatLidarSDK::getInstance()->SetLogDataCallback(devID, LogDataCallback, nullptr);
 	/*****************query lidar network(include check lidar isonline)**************************/
-	fs_ipport_t info;
-	bool ret = PaceCatLidarSDK::getInstance()->QueryBaseInfo(devID, lidar_addr, info);
+	NetWorkInfo info;
+	bool ret = PaceCatLidarSDK::getInstance()->QueryBaseInfo(devID, info);
 	if (ret)
 	{
 		struct in_addr ip_addr;
@@ -36,22 +37,36 @@ int main()
 		host_ip_str.assign(ip_str_result2, 16);
 		printf("lidar_ip:%s lidar_port:%d host_ip:%s  host_port:%d\n", lidar_ip_str.c_str(), info.lidar_port, host_ip_str.c_str(), info.host_port);
 	}
-	ret = PaceCatLidarSDK::getInstance()->SetYawAngle(devID,200);
+	ret = PaceCatLidarSDK::getInstance()->SetWorking(devID,true);
 	if(ret)
 	{
-		printf("set yaw angle ok\n");
+		printf("set run ok\n");
 	}
+
+
 #if 0
-	/*****************set lidar network(include check lidar isonline)**************************/
-	std::string in_lidar_ip="192.168.0.137";
-	std::string in_host_ip="192.168.0.123";
-	uint16_t in_lidar_port=6543;
-	uint16_t in_host_port=6669;
-	bool ret2 = PaceCatLidarSDK::getInstance()->SetLidarNetWork(devID, in_lidar_ip, in_lidar_port,in_host_ip,in_host_port);
+	/*****************set lidar network(finish set,will restart, maximum wait time: 30 seconds)**************************/
+	std::string set_lidar_ip="192.168.0.223";
+	std::string set_lidar_mask="255.255.255.0";
+	std::string set_lidar_gateway="192.168.0.1";
+	uint16_t set_lidar_port=6543;//6001  6002 is used
+	bool ret2 = PaceCatLidarSDK::getInstance()->SetLidarNetWork(devID, set_lidar_ip, set_lidar_mask,set_lidar_gateway,set_lidar_port);
 	if (ret2)
 	{
-		printf("set lidar network ok,please restart power\n");
+		printf("set lidar network ok, restart now\n");
 	}
+#endif
+#if 1
+	/*****************set lidar upload ip port(finish set,will restart, maximum wait time: 30 seconds)**************************/	
+
+	std::string set_upload_ip="192.168.0.47";
+	uint16_t set_upload_port=6668;
+	bool ret2 = PaceCatLidarSDK::getInstance()->SetLidarUploadNetWork(devID, set_upload_ip, set_upload_port);
+	if (ret2)
+	{
+		printf("set upload ip  port ok,restart now\n");
+	}
+
 #endif
 	while (1)
 	{

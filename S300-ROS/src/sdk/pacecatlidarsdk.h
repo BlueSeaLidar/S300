@@ -7,11 +7,25 @@
 #include<thread>
 #include<mutex>
 #include<string>
+#ifdef _WIN32
+#pragma warning(disable : 4996)
+#pragma warning(disable : 4244)
+#include <winsock2.h>
+#include <iphlpapi.h>
+#pragma comment(lib, "iphlpapi.lib")
+#pragma comment(lib, "ws2_32.lib")
+typedef uint32_t in_addr_t;
+#else
+#include <unistd.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include <arpa/inet.h>
+#endif
 #include"protocol.h"
-#include "FsTcpTransControl.h"
 #include"../3rdparty/concurrentqueue/concurrentqueue.h"
 using namespace moodycamel;
-#define S300_E_SDKVERSION "V1.3_20250730" // SDK版本号
+#define S300_E_SDKVERSION "V1.7.1_2025102201" // SDK版本号
 
 
 typedef struct
@@ -31,7 +45,7 @@ typedef struct
 typedef struct
 {
 	//std::string mcu_ver;
-	//std::string motor_ver;
+	std::string motor_ver;
 	std::string software_ver;
 }VersionInfo;
 
@@ -50,8 +64,15 @@ typedef struct
 	int code;
 	std::string value;
 	bool isrun;
+	std::string adapter;
 }HeartInfo;
 
+struct NetWorkInfo {
+    uint32_t lidar_ip;
+    uint32_t host_ip;
+    uint16_t lidar_port;
+    uint16_t host_port;
+};
 enum LidarState
 {
 	OFFLINE = 0,
@@ -95,7 +116,7 @@ struct RunConfig
 	std::string lidar_ip;
 	int lidar_port;
 	int listen_port;
-	int tcp_cmd_fd;
+	int udp_cmd_fd;
 	int udp_data_fd;
 	//std::vector<LidarCloudPointData> cloud_data;
 	//std::queue<IIM42652_FIFO_PACKET_16_ST> imu_data;
@@ -107,6 +128,7 @@ struct RunConfig
 	std::string send_buf;
 	int recv_len;
 	std::string recv_buf;
+	DEV_CFG_ST dev_cfg;
 	ConcurrentQueue<std::string> data_queue;
 
 };
@@ -116,7 +138,7 @@ public:
 	static PaceCatLidarSDK *getInstance();
 	static void deleteInstance();
 
-	void Init();
+	void Init(std::string adapter);
 	void Uninit();
 
 	/*
@@ -126,7 +148,7 @@ public:
 	bool SetImuDataCallback(int ID, LidarImuDataCallback cb, void* client_data);
 	bool SetLogDataCallback(int ID, LidarLogDataCallback cb, void* client_data);
 
-	void WritePointCloud(int ID, const uint8_t dev_type, onePoi *data);
+	void WritePointCloud(int ID, const uint8_t dev_type, onePoi *data,uint16_t num);
 	void WriteImuData( int ID, const uint8_t dev_type, fs_lidar_imu_t* data);
 	void WriteLogData(int ID, const uint8_t dev_type, char* data, int len);
 
@@ -147,7 +169,7 @@ public:
 	/*
 	 *	query connect lidar base info
 	 */
-	bool QueryBaseInfo(int ID, std::string lidarip,fs_ipport_t &info);
+	bool QueryBaseInfo(int ID, NetWorkInfo &info);
 
 	/*
 	 *	query connect lidar version
@@ -162,18 +184,22 @@ public:
 	/*
 	 *	set lidar    ip  mask  gateway  receive port
 	 */
-	bool SetLidarNetWork(int ID, std::string in_lidar_ip,uint16_t in_lidar_port,std::string in_host_ip,uint16_t in_host_port);
-	/*
-	*	set yaw angle
-	*/
-	bool SetYawAngle(int ID,int yaw);
+	bool SetLidarNetWork(int ID,std::string ip, std::string mask, std::string gateway, uint16_t port);
 
+	/*
+	 *	set lidar    upload ip    upload port     fixed upload or not
+	 */
+	bool SetLidarUploadNetWork(int ID, std::string upload_ip, uint16_t upload_port);
+
+	/*
+	*	set timestamp sync
+	*/
 	bool SetTimeStampSync(int ID);
-
 	/*
-	*	set yaw angle
+	*	set lidar start/stop
 	*/
-	
+	bool SetWorking(int ID,bool isrun);
+
 	int QueryIDByIp(std::string ip);
 	RunConfig*getConfig(int ID);
 protected:
@@ -182,10 +208,10 @@ private:
 	void UDPThreadRecv(int id);
 	void UDPThreadParse(int id);
 
-	void HeartThreadProc();
+	void HeartThreadProc(HeartInfo &heartinfo);
 
-	bool TalkWithTCP(int tcp_cmd_fd,int waittime,const std::string sendbuf,std::string &recvbuf);
-	bool SetTimeSync(int fd);
+	std::string GetErrorEvent(PROCOTOL_ALARM_EVENTS_ST *syseventlog);
+	in_addr_t get_interface_ip(const char *ifname);
 private:
 	static PaceCatLidarSDK *m_sdk;
 	PaceCatLidarSDK();
@@ -201,7 +227,9 @@ private:
 	int64_t imu_idx = 0;
 	int m_currentframeidx{ 0 };
 
-	HeartInfo heartinfo;
+	HeartInfo m_heartinfo;
+	std::thread m_heartthread;
+	
 };
 
 
