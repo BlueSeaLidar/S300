@@ -29,13 +29,7 @@ PaceCatLidarSDK::PaceCatLidarSDK()
 
 PaceCatLidarSDK::~PaceCatLidarSDK()
 {
-	m_heartinfo.isrun = false;
-	for (unsigned int i = 0; i < m_lidars.size(); i++)
-	{
-		m_lidars[i]->run_state = OFFLINE;
-		SystemAPI::closefd(m_lidars[i]->udp_data_fd, true);
-		SystemAPI::closefd(m_lidars[i]->udp_cmd_fd, true);
-	}
+	Uninit();
 }
 bool PaceCatLidarSDK::SetPointCloudCallback(int ID, LidarCloudPointCallback cb, void *client_data)
 {
@@ -93,20 +87,28 @@ void PaceCatLidarSDK::WriteLogData(int ID, const uint8_t dev_type, char *data, i
 	if (lidar == nullptr)
 		return;
 	if (lidar->cb_logdata != nullptr)
-		lidar->cb_logdata(ID, dev_type, data, len);
+	{
+		char logbuf[1024] = {0};
+		sprintf(logbuf, "time:%s %s", SystemAPI::getCurrentTime().c_str(), data);
+		lidar->cb_logdata(ID, dev_type, logbuf, strlen(logbuf));
+	}
 }
 
 void PaceCatLidarSDK::Init(std::string adapter)
 {
-	m_heartinfo.code = 0;
-	m_heartinfo.isrun = true;
-	m_heartinfo.adapter = adapter;
-	m_heartthread = std::thread(&PaceCatLidarSDK::HeartThreadProc, PaceCatLidarSDK::getInstance(), std::ref(m_heartinfo));
-	m_heartthread.detach();
+	if (!m_heartinfo.isrun)
+	{
+		m_heartinfo.code = 0;
+		m_heartinfo.isrun = true;
+		m_heartinfo.adapter = adapter;
+		m_heartthread = std::thread(&PaceCatLidarSDK::HeartThreadProc, PaceCatLidarSDK::getInstance(), std::ref(m_heartinfo));
+		m_heartthread.detach();
+	}
 }
 
 void PaceCatLidarSDK::Uninit()
 {
+	m_heartinfo.isrun = false;
 	for (unsigned int i = 0; i < m_lidars.size(); i++)
 	{
 		m_lidars.at(i)->run_state = QUIT;
@@ -201,7 +203,7 @@ bool PaceCatLidarSDK::DisconnectLidar(int ID)
 	{
 		if (m_lidars.at(i)->ID == ID && m_lidars.at(i)->run_state != QUIT)
 		{
-			m_lidars.at(i)->run_state = OFFLINE;
+			m_lidars.at(i)->run_state = QUIT;
 			return true;
 		}
 	}
@@ -305,7 +307,7 @@ bool PaceCatLidarSDK::SetLidarNetWork(int ID, std::string ip, std::string mask, 
 	ret = CommunicationAPI::udp_talk_pack(lidar->udp_cmd_fd, lidar->lidar_ip.c_str(), lidar->lidar_port, send_buf.size(), send_buf.c_str(), recv_len, recv_buf);
 	if (ret)
 	{
-		printf("SetLidarNetWork:%s\n",recv_buf);
+		printf("SetLidarNetWork:%s\n", recv_buf);
 		return ret;
 	}
 
@@ -334,14 +336,14 @@ bool PaceCatLidarSDK::SetLidarUploadNetWork(int ID, std::string upload_ip, uint1
 
 	memcpy(cmd + 4, &upload_port, 2);
 	std::string send_buf = BaseAPI::generate_cmd2(3, 6, cmd);
-	
+
 	int recv_len;
 	char recv_buf[1024] = {0};
 	ret = CommunicationAPI::udp_talk_pack(lidar->udp_cmd_fd, lidar->lidar_ip.c_str(), lidar->lidar_port, send_buf.size(), send_buf.c_str(), recv_len, recv_buf);
 	if (ret)
 	{
-		
-		printf("SetLidarUploadNetWork:%s\n",recv_buf);
+
+		printf("SetLidarUploadNetWork:%s\n", recv_buf);
 		return ret;
 	}
 	return false;
@@ -387,6 +389,90 @@ bool PaceCatLidarSDK::SetWorking(int ID, bool isrun)
 		uint8_t code;
 		memcpy(&code, recv_buf, sizeof(code));
 		return code == 0 ? true : false;
+	}
+	return false;
+}
+
+bool PaceCatLidarSDK::SetImuAcc(int ID, uint8_t accvalue)
+{
+	RunConfig *lidar = getConfig(ID);
+	if (lidar == nullptr)
+		return false;
+
+	if (accvalue > ACC_16)
+		return false;
+
+	std::string send_buf = BaseAPI::generate_cmd2(18, sizeof(accvalue), (char *)&accvalue);
+	int recv_len;
+	char recv_buf[1024] = {0};
+	bool ret = CommunicationAPI::udp_talk_pack(lidar->udp_cmd_fd, lidar->lidar_ip.c_str(), lidar->lidar_port, send_buf.size(), send_buf.c_str(), recv_len, recv_buf, 10, 50000);
+	if (ret)
+	{
+		uint8_t code;
+		memcpy(&code, recv_buf, sizeof(code));
+		return code == 0 ? true : false;
+	}
+	return false;
+}
+bool PaceCatLidarSDK::SetImuGyro(int ID, uint8_t gyrovalue)
+{
+	RunConfig *lidar = getConfig(ID);
+	if (lidar == nullptr)
+		return false;
+
+	if (gyrovalue > GYRO_2000)
+		return false;
+	std::string send_buf = BaseAPI::generate_cmd2(19, sizeof(gyrovalue), (char *)&gyrovalue);
+	int recv_len;
+	char recv_buf[1024] = {0};
+	bool ret = CommunicationAPI::udp_talk_pack(lidar->udp_cmd_fd, lidar->lidar_ip.c_str(), lidar->lidar_port, send_buf.size(), send_buf.c_str(), recv_len, recv_buf, 10, 50000);
+	if (ret)
+	{
+		uint8_t code;
+		memcpy(&code, recv_buf, sizeof(code));
+		return code == 0 ? true : false;
+	}
+	return false;
+}
+bool PaceCatLidarSDK::QueryIMUInfo(int ID, int &acc, float &gyro)
+{
+	RunConfig *lidar = getConfig(ID);
+	if (lidar == nullptr)
+		return false;
+
+	char str = 0x00;
+	std::string send_buf = BaseAPI::generate_cmd(0x00, rand(), 0x01, 1, &str);
+
+	int recv_len = 0;
+	char recv_buf[1024] = {0};
+	bool ret = CommunicationAPI::udp_talk_pack(lidar->udp_cmd_fd, lidar->lidar_ip.c_str(), lidar->lidar_port, send_buf.size(), send_buf.c_str(), recv_len, recv_buf);
+	if (ret)
+	{
+		if (recv_len == sizeof(DEV_CFG_ST))
+		{
+			DEV_CFG_ST *cfg = (DEV_CFG_ST *)recv_buf;
+			int acc_idx = cfg->imu_acc_scale;
+			int gyro_idx = cfg->imu_gyr_scale;
+			switch(acc_idx)
+			{
+				case ACC_2:acc=2;break;
+				case ACC_4:acc=4;break;
+				case ACC_8:acc=8;break;
+				case ACC_16:acc=16;break;
+			}
+			switch(gyro_idx)
+			{
+				case GYRO_15_625:gyro=15.625;break;
+				case GYRO_31_25:gyro=31.25;break;
+				case GYRO_62_5:gyro=62.5;break;
+				case GYRO_125:gyro=125;break;
+				case GYRO_250:gyro=250;break;
+				case GYRO_500:gyro=500;break;
+				case GYRO_1000:gyro=1000;break;
+				case GYRO_2000:gyro=2000;break;
+			}
+			return true;
+		}
 	}
 	return false;
 }
@@ -477,8 +563,34 @@ void PaceCatLidarSDK::UDPThreadParse(int id)
 	int lastFrameidx = 0;
 	fs_lidar_imu_t change_imu;
 
+	DeBugInfo debuginfo;
+	memset(&debuginfo, 0, sizeof(DeBugInfo));
+	debuginfo.imu_packet_idx = -1;
+	debuginfo.pointcloud_packet_idx = -1;
+	debuginfo.timer = LOG_TIMER * 1000000000ULL; // 定时检测时间
+	debuginfo.system_timestamp_last = SystemAPI::GetTimeStamp_us(true) * 1000;
+
 	while (cfg->run_state != QUIT)
 	{
+		// 每间隔一段时间对点云数据,imu数据判定是否存在发送数据异常的情况
+		uint64_t current_timestamp = SystemAPI::GetTimeStamp_us(true) * 1000;
+		if (current_timestamp - debuginfo.system_timestamp_last > debuginfo.timer)
+		{
+			if (!debuginfo.pointcloud_exist)
+			{
+				std::string err = "not find pointcloud packet!";
+				WriteLogData(cfg->ID, MSG_ERROR, (char *)err.c_str(), err.size());
+			}
+			if (!debuginfo.imu_exist)
+			{
+				std::string err = "not find imu packet!";
+				WriteLogData(cfg->ID, MSG_ERROR, (char *)err.c_str(), err.size());
+			}
+			debuginfo.system_timestamp_last = current_timestamp;
+			debuginfo.pointcloud_exist = false;
+			debuginfo.imu_exist = false;
+		}
+
 		std::string recv_data;
 		bool ret = cfg->data_queue.try_dequeue(recv_data);
 		if (!ret)
@@ -552,6 +664,7 @@ void PaceCatLidarSDK::UDPThreadParse(int id)
 				PaceCatLidarSDK::getInstance()->WritePointCloud(cfg->ID, 0, oneFramePoi, LH_HEIGHT * LH_WIDTH);
 				memset(oneFramePoi, 0, sizeof(onePoi) * LH_HEIGHT * LH_WIDTH);
 			}
+			debuginfo.pointcloud_exist = true;
 		}
 		else if (head->data_type == 4)
 		{
@@ -571,6 +684,7 @@ void PaceCatLidarSDK::UDPThreadParse(int id)
 				memcpy(&change_imu.pitch, imu_t, sizeof(fs_lidar_imu_v3));
 			}
 			WriteImuData(cfg->ID, 0, &change_imu);
+			debuginfo.imu_exist = true;
 		}
 		else if (head->data_type == 8)
 		{
@@ -647,7 +761,6 @@ void PaceCatLidarSDK::HeartThreadProc(HeartInfo &heartinfo)
 		{
 			char raw[4096];
 			int dw = recvfrom(sock, raw, sizeof(raw), 0, (struct sockaddr *)&addr, &sz);
-			// printf("%s %d %d %d \n",__FUNCTION__,__LINE__,dw,sizeof(DevHeart));
 			if (dw == sizeof(DevHeart))
 			{
 				DevHeart *devheart = (DevHeart *)raw;
@@ -678,7 +791,6 @@ void PaceCatLidarSDK::HeartThreadProc(HeartInfo &heartinfo)
 					{
 						heartinfo.value = "multiple lidars with the same ip";
 						heartinfo.code = -1;
-						// heartinfo.isrun=false;
 						break;
 					}
 				}

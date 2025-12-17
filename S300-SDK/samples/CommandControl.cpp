@@ -11,10 +11,19 @@ void LogDataCallback(uint32_t handle, const uint8_t dev_type, char *data, int le
 
 int main()
 {
-	char lidar_addr[] = "192.168.0.223";
+#if 1
+	char lidar_addr[] = "192.168.158.98";
 	int lidar_port = 6543;
 	int listen_port = 6668;
 	std::string adapter = "ens38";
+#endif
+#if 0
+	char lidar_addr[] = "192.168.137.209";
+	int lidar_port = 6543;
+	int listen_port = 6002;
+	std::string adapter = "ens38";
+#endif
+
 	PaceCatLidarSDK::getInstance()->Init(adapter);
 
 	int devID = PaceCatLidarSDK::getInstance()->AddLidar(lidar_addr, lidar_port, listen_port);
@@ -56,7 +65,7 @@ int main()
 		printf("set lidar network ok, restart now\n");
 	}
 #endif
-#if 1
+#if 0
 	/*****************set lidar upload ip port(finish set,will restart, maximum wait time: 30 seconds)**************************/	
 
 	std::string set_upload_ip="192.168.0.47";
@@ -68,6 +77,18 @@ int main()
 	}
 
 #endif
+#if 1
+	/***********************set imu acc and gyro******************/
+	bool ret_acc = PaceCatLidarSDK::getInstance()->SetImuAcc(devID, ACC_4);
+	printf("set imu acc %s\n",ret_acc?"ok":"ng");
+	bool ret_gyro = PaceCatLidarSDK::getInstance()->SetImuGyro(devID, GYRO_62_5);
+	printf("set imu gyro %s\n",ret_gyro?"ok":"ng");
+
+	int acc=0;float gyro=0;
+	bool ret_query_imu = PaceCatLidarSDK::getInstance()->QueryIMUInfo(devID,acc,gyro);
+	printf("query imu range:%s   acc:%d gyro:%f\n",ret_query_imu?"ok":"ng",acc,gyro);
+#endif
+
 	while (1)
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(1000 * 2));

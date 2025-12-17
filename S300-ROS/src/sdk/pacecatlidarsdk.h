@@ -25,7 +25,8 @@ typedef uint32_t in_addr_t;
 #include"protocol.h"
 #include"../3rdparty/concurrentqueue/concurrentqueue.h"
 using namespace moodycamel;
-#define S300_E_SDKVERSION "V1.7.1_2025102201" // SDK版本号
+#define LOG_TIMER 2
+#define S300_E_SDKVERSION "V1.7.2_2025121501" // SDK版本号
 
 
 typedef struct
@@ -130,8 +131,62 @@ struct RunConfig
 	std::string recv_buf;
 	DEV_CFG_ST dev_cfg;
 	ConcurrentQueue<std::string> data_queue;
-
 };
+struct DeBugInfo
+{
+	uint64_t pointcloud_timestamp_large_last;//最后一次时间间隔过大的时间戳
+	uint32_t pointcloud_timestamp_large_num;//当前时间段打印次数统计
+
+	uint64_t pointcloud_timestamp_jumpback_last;//最后一次时间回跳的时间戳
+	uint32_t pointcloud_timestamp_jumpback_num;//当前时间段打印次数统计
+	
+	uint64_t pointcloud_timestamp_drop_last;//最后一次丢包的时间戳
+	uint32_t pointcloud_timestamp_drop_num;//当前时间段打印次数统计
+
+	uint64_t pointcloud_timestamp_last; // 雷达最后一次更新时间戳
+	uint64_t system_timestamp_last; // 系统最后一次更新时间戳
+	uint8_t  pointcloud_exist;//一段时间内是否存在点云包
+	uint8_t  imu_exist;//一段时间内是否存在imu包
+
+	int16_t  pointcloud_packet_idx;//点云包下标
+
+	uint64_t imu_timestamp_large_last;//最后一次时间间隔过大的时间戳
+	uint32_t imu_timestamp_large_num;//当前时间段打印次数统计
+
+	uint64_t imu_timestamp_jumpback_last;//最后一次时间回跳的时间戳
+	uint32_t imu_timestamp_jumpback_num;//当前时间段打印次数统计
+
+	uint64_t imu_timestamp_drop_last;//最后一次丢imu包的时间戳
+	uint32_t imu_timestamp_drop_num;//当前时间段打印次数统计
+
+	uint64_t imu_timestamp_last; // 雷达最后一次更新时间戳
+	int16_t  imu_packet_idx;//imu包下标
+
+	uint64_t  timer;//定时检测时间暂定1S
+
+	uint64_t pointcloud_imu_timestamp_large_last;//点云时间戳间隔过大报警
+	uint32_t pointcloud_imu_timestamp_large_num;//当前时间段打印次数统计
+
+	uint64_t mirror_err_timestamp_last;//转镜异常时间戳
+	uint32_t mirror_err_timestamp_num;//当前时间段打印次数统计
+
+	uint64_t motor_err_timestamp_last;//底板异常时间戳
+	uint32_t motor_err_timestamp_num;//当前时间段打印次数统计
+
+
+	uint64_t dirtydata_err_timestamp_last;//脏污数据异常时间戳
+	uint64_t dirtydata_err_timestamp_num;
+
+	uint64_t filterdata_err_timestamp_last;//去拖点数量异常时间戳
+	uint64_t filterdata_err_timestamp_num;
+
+	uint64_t zero_pointdata_timestamp_last;//0点过多报警时间戳
+	uint64_t zero_pointdata_timestamp_num;
+
+	uint64_t distance_close_timestamp_last;//距离过近系数报警时间戳
+	uint64_t distance_close_timestamp_num;
+};
+
 class PaceCatLidarSDK
 {
 public:
@@ -199,7 +254,18 @@ public:
 	*	set lidar start/stop
 	*/
 	bool SetWorking(int ID,bool isrun);
-
+	/*
+	*	set lidar imu acc value   (2/4/8/16)
+	*/
+	bool SetImuAcc(int ID,uint8_t accvalue);
+	/*
+	*	set lidar imu gyro value   (15.625/31.25/62.5/125/250/500/1000/2000)
+	*/
+	bool SetImuGyro(int ID,uint8_t gyrovalue);
+	/*
+	 *	query imu range param   acc/gyro
+	 */
+	bool QueryIMUInfo(int ID, int &acc,float&gyro);
 	int QueryIDByIp(std::string ip);
 	RunConfig*getConfig(int ID);
 protected:
@@ -216,17 +282,7 @@ private:
 	static PaceCatLidarSDK *m_sdk;
 	PaceCatLidarSDK();
 	~PaceCatLidarSDK();
-
-	int m_idx;
 	std::vector<RunConfig*> m_lidars;
-	uint64_t m_npoint = 0;
-	uint64_t m_npub = 0;
-	bool bottom_ccw = false;
-	uint64_t last_ns = 0;
-	int64_t sidx = 0;
-	int64_t imu_idx = 0;
-	int m_currentframeidx{ 0 };
-
 	HeartInfo m_heartinfo;
 	std::thread m_heartthread;
 	

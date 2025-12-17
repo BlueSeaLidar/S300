@@ -12,7 +12,7 @@ void PointCloudCallback(uint32_t handle, const uint8_t dev_type, onePoi* data, u
     	
     memcpy(p_point_data,data,sizeof(onePoi)*num);
 
-	printf("%d\n",num);
+	//printf("%d\n",num);
 	// if(idx==0)
 	// {
 	// 	lasttime= SystemAPI::GetTimeStamp_us(true);
@@ -62,10 +62,18 @@ void LogDataCallback(uint32_t handle, const uint8_t dev_type, char* data, int le
 
 int main()
 {
-	char lidar_addr[] = "192.168.0.222";
+#if 1
+	char lidar_addr[] = "192.168.158.98";
 	int lidar_port = 6543;
 	int listen_port = 6668;
 	std::string adapter = "ens38";
+#endif
+#if 0
+	char lidar_addr[] = "192.168.137.209";
+	int lidar_port = 6543;
+	int listen_port = 6002;
+	std::string adapter = "ens38";
+#endif
 	PaceCatLidarSDK::getInstance()->Init(adapter);
 	int devID = PaceCatLidarSDK::getInstance()->AddLidar(lidar_addr, lidar_port, listen_port);
 
@@ -74,17 +82,17 @@ int main()
 	PaceCatLidarSDK::getInstance()->SetLogDataCallback(devID, LogDataCallback, nullptr);
 	PaceCatLidarSDK::getInstance()->ConnectLidar(devID);
 
+#if 0
 	//multiple lidars  ,please make sure lidar ip and   localport  is must be not same 
-
-	// char lidar_addr2[] = "192.168.1.10";
-	// int lidar_port2 = 6543;
-	// int listen_port2 = 6669;
-	// int devID2 = PaceCatLidarSDK::getInstance()->AddLidar(lidar_addr2, lidar_port2, listen_port2); 
-	// PaceCatLidarSDK::getInstance()->SetPointCloudCallback(devID2, PointCloudCallback, nullptr);
-	// PaceCatLidarSDK::getInstance()->SetImuDataCallback(devID2, ImuDataCallback, nullptr);
-	// PaceCatLidarSDK::getInstance()->SetLogDataCallback(devID2, LogDataCallback, nullptr);
-	// PaceCatLidarSDK::getInstance()->ConnectLidar(devID2);
-
+	char lidar_addr2[] = "192.168.1.10";
+	int lidar_port2 = 6543;
+	int listen_port2 = 6669;
+	int devID2 = PaceCatLidarSDK::getInstance()->AddLidar(lidar_addr2, lidar_port2, listen_port2); 
+	PaceCatLidarSDK::getInstance()->SetPointCloudCallback(devID2, PointCloudCallback, nullptr);
+	PaceCatLidarSDK::getInstance()->SetImuDataCallback(devID2, ImuDataCallback, nullptr);
+	PaceCatLidarSDK::getInstance()->SetLogDataCallback(devID2, LogDataCallback, nullptr);
+	PaceCatLidarSDK::getInstance()->ConnectLidar(devID2);
+#endif
 
 	printf("use cloudpoint data  reference function  PointCloudCallback \n");
 	printf("use imu data  reference function  ImuDataCallback \n");
