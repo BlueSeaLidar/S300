@@ -26,7 +26,7 @@ typedef uint32_t in_addr_t;
 #include"../3rdparty/concurrentqueue/concurrentqueue.h"
 using namespace moodycamel;
 #define LOG_TIMER 2
-#define S300_E_SDKVERSION "V1.7.2_2025121501" // SDK版本号
+#define S300_E_SDKVERSION "V1.7.7_2026030501" // SDK版本号
 
 
 typedef struct
@@ -187,6 +187,22 @@ struct DeBugInfo
 	uint64_t distance_close_timestamp_num;
 };
 
+struct ImuInfo
+{
+	uint8_t acc_range;
+	uint8_t gyro_range;
+	uint8_t acc_filter_level;
+	uint8_t gyro_filter_level;
+	uint8_t sample_rate;
+	std::string imu_model;
+};
+enum IMU_MODEL
+{
+	IMU_UNKNOWN=0,
+	ICM42688,
+	ICM42652
+};
+
 class PaceCatLidarSDK
 {
 public:
@@ -263,9 +279,18 @@ public:
 	*/
 	bool SetImuGyro(int ID,uint8_t gyrovalue);
 	/*
+	*	sample fliter scale factor sample/2/4/5/8/10/16/20/40
+	*/
+	bool SetIMUFilterLevel(int ID,uint8_t acc_filter_level,uint8_t gyro_filter_level);
+	/*
+	*	25HZ/50HZ/100HZ/200HZ
+	*/
+	bool SetIMUSampleRate(int ID,uint8_t sample_rate);
+	/*
 	 *	query imu range param   acc/gyro
 	 */
-	bool QueryIMUInfo(int ID, int &acc,float&gyro);
+	bool QueryIMUInfo(int ID, ImuInfo&imuinfo);
+
 	int QueryIDByIp(std::string ip);
 	RunConfig*getConfig(int ID);
 protected:

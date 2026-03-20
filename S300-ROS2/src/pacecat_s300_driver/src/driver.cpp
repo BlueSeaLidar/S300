@@ -65,7 +65,9 @@ typedef struct
 
 } ArgData;
 
+#ifdef ROS_VERSION_MAJOR
 
+#endif
 onePoi *p_point_data = NULL;
 void PointCloudCallback(uint32_t handle, const uint8_t dev_type, onePoi *data,uint16_t num, void *client_data)
 {
@@ -86,7 +88,7 @@ void PointCloudCallback(uint32_t handle, const uint8_t dev_type, onePoi *data,ui
       cloud.header.frame_id.assign(argdata->frame_id);
       cloud.height = 1;
       cloud.width = num;
-      cloud.fields.resize(4);
+      cloud.fields.resize(5);
       cloud.fields[0].offset = 0;
       cloud.fields[0].name = "x";
       cloud.fields[0].count = 1;
@@ -106,7 +108,13 @@ void PointCloudCallback(uint32_t handle, const uint8_t dev_type, onePoi *data,ui
       cloud.fields[3].name = "intensity";
       cloud.fields[3].count = 1;
       cloud.fields[3].datatype = PointField::UINT32;
-      cloud.point_step = 16;
+
+      cloud.fields[4].offset = 16;
+      cloud.fields[4].name = "timestamp";
+      cloud.fields[4].count = 1;
+      cloud.fields[4].datatype = PointField::FLOAT64;
+
+      cloud.point_step = 24;
       cloud.row_step = cloud.width * cloud.point_step;
       cloud.data.resize(cloud.row_step * cloud.height);
 
@@ -116,10 +124,10 @@ void PointCloudCallback(uint32_t handle, const uint8_t dev_type, onePoi *data,ui
         memcpy(&cloud.data[0] + i * 16 + 4, &p_point_data[i].pt3d.y, 4);
         memcpy(&cloud.data[0] + i * 16 + 8, &p_point_data[i].pt3d.z, 4);
         memcpy(&cloud.data[0] + i * 16 + 12, &p_point_data[i].reflectivity, 4);
+        memcpy(&cloud.data[0] + i * 16 + 16, &p_point_data[i].timestamp, 8);
       }
-      cloud.header.stamp.sec = data->timestamp / 1000000000;
-      cloud.header.stamp.nanosec = data->timestamp % 1000000000;
-
+      cloud.header.stamp.sec = data->timestamp / 1000000;
+      cloud.header.stamp.nanosec = data->timestamp % 1000000;
       argdata->pub_pointcloud->publish(cloud);
     }
     if (argdata->output_custommsg)
@@ -130,8 +138,8 @@ void PointCloudCallback(uint32_t handle, const uint8_t dev_type, onePoi *data,ui
       msg.lidar_id = 0;
       msg.header.frame_id = argdata->frame_id;
       msg.timebase = data->timestamp;
-      msg.header.stamp.sec = data->timestamp / 1000000000;
-      msg.header.stamp.nanosec = data->timestamp % 1000000000;
+      msg.header.stamp.sec = data->timestamp / 1000000;
+      msg.header.stamp.nanosec = data->timestamp % 1000000;
 
       msg.rsvd = {0, 0, 0};
       for (size_t i = 0; i < N; i++)

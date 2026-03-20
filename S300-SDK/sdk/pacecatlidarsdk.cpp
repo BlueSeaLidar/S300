@@ -3,6 +3,7 @@
 #include "pacecatlidarsdk.h"
 #include "global.h"
 #include <fstream>
+#include <sstream>
 #ifdef _WIN32
 #pragma warning(disable : 4996)
 #pragma warning(disable : 4244)
@@ -25,6 +26,7 @@ void PaceCatLidarSDK::deleteInstance()
 }
 PaceCatLidarSDK::PaceCatLidarSDK()
 {
+	m_heartinfo.isrun = false;
 }
 
 PaceCatLidarSDK::~PaceCatLidarSDK()
@@ -187,7 +189,7 @@ bool PaceCatLidarSDK::ConnectLidar(int ID)
 	VersionInfo info;
 	QueryVersion(ID, info);
 	std::string err = "lidar sn:" + BaseAPI::stringfilter(lidar->dev_cfg.dev_sn, 32) + "softwar_ver:" + info.software_ver + "motor_ver:" + info.motor_ver;
-	WriteLogData(lidar->ID, MSG_INFO, (char *)err.c_str(), err.size());
+	WriteLogData(lidar->ID, MSG_DEBUG, (char *)err.c_str(), err.size());
 	lidar->thread_recv = std::thread(&PaceCatLidarSDK::UDPThreadRecv, PaceCatLidarSDK::getInstance(), ID);
 	lidar->thread_recv.detach();
 
@@ -434,7 +436,7 @@ bool PaceCatLidarSDK::SetImuGyro(int ID, uint8_t gyrovalue)
 	}
 	return false;
 }
-bool PaceCatLidarSDK::QueryIMUInfo(int ID, int &acc, float &gyro)
+bool PaceCatLidarSDK::QueryIMUInfo(int ID, ImuInfo &imuinfo)
 {
 	RunConfig *lidar = getConfig(ID);
 	if (lidar == nullptr)
@@ -451,31 +453,70 @@ bool PaceCatLidarSDK::QueryIMUInfo(int ID, int &acc, float &gyro)
 		if (recv_len == sizeof(DEV_CFG_ST))
 		{
 			DEV_CFG_ST *cfg = (DEV_CFG_ST *)recv_buf;
-			int acc_idx = cfg->imu_acc_scale;
-			int gyro_idx = cfg->imu_gyr_scale;
-			switch(acc_idx)
-			{
-				case ACC_2:acc=2;break;
-				case ACC_4:acc=4;break;
-				case ACC_8:acc=8;break;
-				case ACC_16:acc=16;break;
-			}
-			switch(gyro_idx)
-			{
-				case GYRO_15_625:gyro=15.625;break;
-				case GYRO_31_25:gyro=31.25;break;
-				case GYRO_62_5:gyro=62.5;break;
-				case GYRO_125:gyro=125;break;
-				case GYRO_250:gyro=250;break;
-				case GYRO_500:gyro=500;break;
-				case GYRO_1000:gyro=1000;break;
-				case GYRO_2000:gyro=2000;break;
-			}
+			imuinfo.acc_range = cfg->imu_acc_scale;
+			imuinfo.gyro_range = cfg->imu_gyr_scale;
+			imuinfo.acc_filter_level = cfg->imu_acc_filter;
+			imuinfo.gyro_filter_level = cfg->imu_gyr_filter;
+			imuinfo.sample_rate = cfg->imu_odr;
+			imuinfo.imu_model = cfg->inner_imu_type<=1?"ICM42688":"ICM42652";
 			return true;
 		}
 	}
 	return false;
 }
+bool PaceCatLidarSDK::SetIMUFilterLevel(int ID, uint8_t acc_filter_level,uint8_t gyro_filter_level)
+{
+	RunConfig *lidar = getConfig(ID);
+	if (lidar == nullptr)
+		return false;
+
+	if (acc_filter_level > SAMPLE_RATE_DIV40||gyro_filter_level>SAMPLE_RATE_DIV40)
+		return false;
+
+	char cmd[2]={0};
+	cmd[0]=acc_filter_level;
+	cmd[1]=gyro_filter_level;
+	std::string send_buf = BaseAPI::generate_cmd2(20, 2, cmd);
+	int recv_len;
+	char recv_buf[1024] = {0};
+	bool ret = CommunicationAPI::udp_talk_pack(lidar->udp_cmd_fd, lidar->lidar_ip.c_str(), lidar->lidar_port, send_buf.size(), send_buf.c_str(), recv_len, recv_buf, 10, 50000);
+	if (ret)
+	{
+		uint8_t code;
+		memcpy(&code, recv_buf, sizeof(code));
+		return code == 0 ? true : false;
+	}
+	return false;
+}
+bool PaceCatLidarSDK::SetIMUSampleRate(int ID, uint8_t sample_rate)
+{
+	RunConfig *lidar = getConfig(ID);
+	if (lidar == nullptr)
+		return false;
+
+	if (sample_rate > FREQ_200HZ)
+		return false;
+
+	std::string send_buf = BaseAPI::generate_cmd2(21, 1, (char*)&sample_rate);
+	int recv_len;
+	char recv_buf[1024] = {0};
+	bool ret = CommunicationAPI::udp_talk_pack(lidar->udp_cmd_fd, lidar->lidar_ip.c_str(), lidar->lidar_port, send_buf.size(), send_buf.c_str(), recv_len, recv_buf, 10, 50000);
+	if (ret)
+	{
+		uint8_t code;
+		memcpy(&code, recv_buf, sizeof(code));
+		return code == 0 ? true : false;
+	}
+	return false;
+}
+
+
+
+
+
+
+
+
 int PaceCatLidarSDK::QueryIDByIp(std::string ip)
 {
 	for (unsigned int i = 0; i < m_lidars.size(); i++)
@@ -554,11 +595,17 @@ void PaceCatLidarSDK::UDPThreadParse(int id)
 	int LH_WIDTH = 360;
 	// judge   single echo  or double  echo;
 	int upload_type = getbit(cfg->dev_cfg.upload_point_clound_en, 0) * 1 + getbit(cfg->dev_cfg.upload_point_clound_en, 1) * 2 + getbit(cfg->dev_cfg.upload_point_clound_en, 2) * 4;
+	int one_frame_packet_num = 450;
 	if (upload_type == 1)
 		LH_HEIGHT = 150;
 	else if (upload_type == 2)
 		LH_HEIGHT = 75;
-
+	else if(upload_type == 4)
+	{
+		LH_WIDTH = 180;
+		LH_HEIGHT = 75;
+		one_frame_packet_num=180;
+	}
 	oneFramePoi = new onePoi[LH_HEIGHT * LH_WIDTH];
 	int lastFrameidx = 0;
 	fs_lidar_imu_t change_imu;
@@ -569,7 +616,6 @@ void PaceCatLidarSDK::UDPThreadParse(int id)
 	debuginfo.pointcloud_packet_idx = -1;
 	debuginfo.timer = LOG_TIMER * 1000000000ULL; // 定时检测时间
 	debuginfo.system_timestamp_last = SystemAPI::GetTimeStamp_us(true) * 1000;
-
 	while (cfg->run_state != QUIT)
 	{
 		// 每间隔一段时间对点云数据,imu数据判定是否存在发送数据异常的情况
@@ -613,7 +659,7 @@ void PaceCatLidarSDK::UDPThreadParse(int id)
 		}
 		if ((unsigned char)recv_buf[0] != 0x5A || (unsigned char)recv_buf[1] != 0xA5)
 			continue;
-		if (head->data_type == 0x01 || head->data_type == 0x0E)
+		if (head->data_type == 0x01 || head->data_type == 0x0E|| head->data_type == 0x0C)
 		{
 			soc_protocol_data_t *pro_data = (soc_protocol_data_t *)(recv_buf + sizeof(soc_head_t));
 			uint16_t start_row = pro_data->row;
@@ -622,17 +668,24 @@ void PaceCatLidarSDK::UDPThreadParse(int id)
 			uint32_t col = 0;
 			uint16_t pixelcnt = pro_data->dot_num * pro_data->echo_num;
 			uint16_t one_pixel_len = sizeof(soc_dis_pt_data_t);
+
 			int head_size = sizeof(soc_head_t) + sizeof(soc_protocol_data_t);
 			if (lastFrameidx != 0)
 			{
-				if ((pro_data->data_sequence - lastFrameidx != 1) && (pro_data->data_sequence != 1))
+				if ((pro_data->data_sequence - lastFrameidx != 1) && (lastFrameidx-pro_data->data_sequence != one_frame_packet_num-1))
 				{
 					std::string err = "time: " + SystemAPI::getCurrentTime() + " drop package last index: " + std::to_string(lastFrameidx) + " now index:" + std::to_string(pro_data->data_sequence);
 					WriteLogData(cfg->ID, MSG_ERROR, (char *)err.c_str(), err.size());
 				}
 			}
 			lastFrameidx = pro_data->data_sequence;
-			for (int j = 0; j < pixelcnt; j++)
+
+			if(head->data_type == 0x0C &&start_row==0)
+				pixelcnt+=1;
+			if(head->data_type == 0x0C &&start_row==76)
+				pixelcnt-=1;	
+
+			for (uint8_t j = 0; j < pixelcnt; j++)
 			{
 				if (head->data_type == 0x01)
 				{
@@ -641,10 +694,14 @@ void PaceCatLidarSDK::UDPThreadParse(int id)
 				}
 				else if (head->data_type == 0x0E)
 				{
-					row = start_row / 2 + j / 4;
-					col = start_col + j % 4;
+					row = start_row/2 + j/4;
+                    col = start_col + j % 4;
 				}
-
+				else if (head->data_type == 0x0C)
+				{
+					row = start_row/2 + j / 2;
+                    col = start_col/2 + j % 2;
+				}
 				onePoi ptInfo;
 				memset(&ptInfo, 0, sizeof(onePoi));
 				ptInfo.row_pos = row;
@@ -657,7 +714,11 @@ void PaceCatLidarSDK::UDPThreadParse(int id)
 				ptInfo.pt3d.z = (float)(t->z / 10.0f) * 2 / 100;
 				ptInfo.distance = t->distance;
 				ptInfo.reflectivity = t->reflect;
+				//if(row * LH_WIDTH + col>= LH_WIDTH*LH_HEIGHT)
+					//printf("111:%d %d %d %d\n", row * LH_WIDTH + col, row, LH_WIDTH, col);
 				memcpy(oneFramePoi + (row * LH_WIDTH + col), &ptInfo, sizeof(onePoi));
+				//printf("data_sequence:%d %d %d %d row:%d col:%d\n",pro_data->data_sequence,start_row,start_col,j,row,col);
+
 			}
 			if (pro_data->frame_flag == 2)
 			{
@@ -706,6 +767,8 @@ void PaceCatLidarSDK::UDPThreadParse(int id)
 
 void PaceCatLidarSDK::HeartThreadProc(HeartInfo &heartinfo)
 {
+	//printf("%s %d\n", __FUNCTION__, __LINE__);
+
 #ifdef _WIN32
 	WSADATA wsda; //   Structure   to   store   info
 	WSAStartup(MAKEWORD(2, 2), &wsda);
@@ -733,7 +796,6 @@ void PaceCatLidarSDK::HeartThreadProc(HeartInfo &heartinfo)
 		SystemAPI::closefd(sock, true);
 		return;
 	}
-
 	struct ip_mreq mreq;
 	mreq.imr_multiaddr.s_addr = inet_addr("225.225.225.225");
 	mreq.imr_interface.s_addr = get_interface_ip(heartinfo.adapter.c_str());
@@ -744,7 +806,6 @@ void PaceCatLidarSDK::HeartThreadProc(HeartInfo &heartinfo)
 		SystemAPI::closefd(sock, true);
 		return;
 	}
-
 	struct timeval tv;
 	SystemAPI::GetTimeStamp(&tv, false);
 	time_t tto = tv.tv_sec + 1;
@@ -755,7 +816,7 @@ void PaceCatLidarSDK::HeartThreadProc(HeartInfo &heartinfo)
 		fd_set fds;
 		FD_ZERO(&fds);
 		FD_SET(sock, &fds);
-		struct timeval to = {0, 10};
+		struct timeval to = {0, 100};
 		int ret = select(sock + 1, &fds, NULL, NULL, &to);
 		if (ret > 0)
 		{

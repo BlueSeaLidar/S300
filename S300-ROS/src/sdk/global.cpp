@@ -632,48 +632,48 @@ bool CommunicationAPI::udp_talk_pack(int fd_udp, const char *lidar_ip, int lidar
 	}
 	return false;
 }
-std::vector<uint8_t> BaseAPI::split_ip_to_bytes_method3(const std::string& ip_str) 
+std::vector<uint8_t> BaseAPI::split_ip_to_bytes_method3(const std::string& ip_str)
 {
-    // 复制字符串到可修改的缓冲区
-    char buffer[ip_str.size() + 1];
-    std::strcpy(buffer, ip_str.c_str());
-    
-    std::vector<uint8_t> bytes;
-    char* token = std::strtok(buffer, ".");
-    int segment_count = 0;
-    
-    while (token != nullptr) {
-        if (segment_count >= 4) {
-            throw std::invalid_argument("Too many segments in IP address");
-        }
-        
-        // 验证每个字符
-        for (char* p = token; *p; p++) {
-            if (!std::isdigit(static_cast<unsigned char>(*p))) {
-                throw std::invalid_argument("Invalid character in IP address");
-            }
-        }
-        
-        char* end;
-        long num = std::strtol(token, &end, 10);
-        
-        // 检查转换是否完全成功
-        if (*end != '\0') {
-            throw std::invalid_argument("Invalid number format");
-        }
-        
-        if (num < 0 || num > 255) {
-            throw std::out_of_range("IP segment out of range [0-255]");
-        }
-        
-        bytes.push_back(static_cast<uint8_t>(num));
-        segment_count++;
-        token = std::strtok(nullptr, ".");
-    }
-    
-    if (bytes.size() != 4) {
-        throw std::invalid_argument("IP address must have exactly 4 segments");
-    }
-    
-    return bytes;
+	// 使用 vector<char> 替代 VLA
+	std::vector<char> buffer(ip_str.size() + 1);
+	std::strcpy(buffer.data(), ip_str.c_str());
+
+	std::vector<uint8_t> bytes;
+	char* token = std::strtok(buffer.data(), ".");
+	int segment_count = 0;
+
+	while (token != nullptr) {
+		if (segment_count >= 4) {
+			throw std::invalid_argument("Too many segments in IP address");
+		}
+
+		// 验证每个字符
+		for (char* p = token; *p; p++) {
+			if (!::isdigit(static_cast<unsigned char>(*p))) {
+				throw std::invalid_argument("Invalid character in IP address");
+			}
+		}
+
+		char* end;
+		long num = std::strtol(token, &end, 10);
+
+		// 检查转换是否完全成功
+		if (*end != '\0') {
+			throw std::invalid_argument("Invalid number format");
+		}
+
+		if (num < 0 || num > 255) {
+			throw std::out_of_range("IP segment out of range [0-255]");
+		}
+
+		bytes.push_back(static_cast<uint8_t>(num));
+		segment_count++;
+		token = std::strtok(nullptr, ".");
+	}
+
+	if (bytes.size() != 4) {
+		throw std::invalid_argument("IP address must have exactly 4 segments");
+	}
+
+	return bytes;
 }

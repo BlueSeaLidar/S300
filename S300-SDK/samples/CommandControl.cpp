@@ -44,14 +44,13 @@ int main()
 		lidar_ip_str.assign(ip_str_result, 16);
 		const char *ip_str_result2 = inet_ntoa(ip_addr2);
 		host_ip_str.assign(ip_str_result2, 16);
-		printf("lidar_ip:%s lidar_port:%d host_ip:%s  host_port:%d\n", lidar_ip_str.c_str(), info.lidar_port, host_ip_str.c_str(), info.host_port);
+		printf("lidar_ip:%s lidar_imu_odrport:%d host_ip:%s  host_port:%d\n", lidar_ip_str.c_str(), info.lidar_port, host_ip_str.c_str(), info.host_port);
 	}
 	ret = PaceCatLidarSDK::getInstance()->SetWorking(devID,true);
 	if(ret)
 	{
 		printf("set run ok\n");
 	}
-
 
 #if 0
 	/*****************set lidar network(finish set,will restart, maximum wait time: 30 seconds)**************************/
@@ -77,27 +76,40 @@ int main()
 	}
 
 #endif
-#if 1
+#if 0
 	/***********************set imu acc and gyro******************/
 	bool ret_acc = PaceCatLidarSDK::getInstance()->SetImuAcc(devID, ACC_4);
 	printf("set imu acc %s\n",ret_acc?"ok":"ng");
 	bool ret_gyro = PaceCatLidarSDK::getInstance()->SetImuGyro(devID, GYRO_62_5);
 	printf("set imu gyro %s\n",ret_gyro?"ok":"ng");
 
-	int acc=0;float gyro=0;
-	bool ret_query_imu = PaceCatLidarSDK::getInstance()->QueryIMUInfo(devID,acc,gyro);
-	printf("query imu range:%s   acc:%d gyro:%f\n",ret_query_imu?"ok":"ng",acc,gyro);
+	bool ret_filterlevel = PaceCatLidarSDK::getInstance()->SetIMUFilterLevel(devID, SAMPLE_RATE_DIV40,SAMPLE_RATE_DIV40);
+	printf("set imu filter level %s\n",ret_filterlevel?"ok":"ng");
+	bool ret_samplerate = PaceCatLidarSDK::getInstance()->SetIMUSampleRate(devID, FREQ_200HZ);
+	printf("set imu sample rate %s\n",ret_samplerate?"ok":"ng");
+
+	ImuInfo imuinfo;
+	bool ret_query_imu = PaceCatLidarSDK::getInstance()->QueryIMUInfo(devID,imuinfo);
+	printf("query imu range:%s  acc_range:%u gyro_range:%u acc_filter_level:%u gyro_filter_level:%u sample_rate:%u imu_model:%s\n",
+		ret_query_imu?"ok":"ng",
+		imuinfo.acc_range,
+		imuinfo.gyro_range,
+		imuinfo.acc_filter_level,
+		imuinfo.gyro_filter_level,
+		imuinfo.sample_rate,
+		imuinfo.imu_model.c_str());
 #endif
 
 	while (1)
 	{
 		std::this_thread::sleep_for(std::chrono::milliseconds(1000 * 2));
+#ifndef MODE_SIMPLE
 		int state = PaceCatLidarSDK::getInstance()->QueryDeviceState(devID);
 		if (state == ONLINE)
 			printf("lidar online\n");
 		else
 			printf("lidar offline\n");
-
+#endif
 		printf("lidar timestamp sync:%d\n",PaceCatLidarSDK::getInstance()->SetTimeStampSync(devID));
 	}
 	PaceCatLidarSDK::getInstance()->deleteInstance();

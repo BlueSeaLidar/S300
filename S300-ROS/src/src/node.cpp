@@ -63,6 +63,7 @@ void PointCloudCallback(uint32_t handle, const uint8_t dev_type, onePoi *data, u
   ArgData *argdata = (ArgData *)client_data;
   if (argdata->output_pointcloud)
   {
+#if 1
     sensor_msgs::PointCloud msg;
     int N = num;
     msg.header.stamp.sec = data[0].timestamp / 1000000;
@@ -72,17 +73,75 @@ void PointCloudCallback(uint32_t handle, const uint8_t dev_type, onePoi *data, u
     msg.channels.resize(1);
     msg.channels[0].name = "intensities";
     msg.channels[0].values.resize(N);
-
+    //int test=0,test2=0;
     for (size_t i = 0; i < N; i++)
     {
       msg.points[i].x = p_point_data[i].pt3d.x;
       msg.points[i].y = p_point_data[i].pt3d.y;
       msg.points[i].z = p_point_data[i].pt3d.z;
       msg.channels[0].values[i] = p_point_data[i].reflectivity;
+
+      // if(msg.points[i].x==0&&msg.points[i].y==0&&msg.points[i].z==0)
+      //   test++;
+      // if(p_point_data[i].pt3d.x==0&&p_point_data[i].pt3d.y==0&&p_point_data[i].pt3d.z==0)
+      //   test2++;
     }
+    //printf("333:%d %d\n",N-test,N-test2);
+    //test=0;
     sensor_msgs::PointCloud2 laserCloudMsg;
     convertPointCloudToPointCloud2(msg, laserCloudMsg);
     argdata->pub_pointcloud.publish(laserCloudMsg);
+#endif
+#if 0
+    sensor_msgs::PointCloud2 cloud;
+      cloud.header.frame_id.assign(argdata->frame_id);
+      cloud.height = 1;
+      cloud.width = num;
+      cloud.fields.resize(5);
+      cloud.fields[0].offset = 0;
+      cloud.fields[0].name = "x";
+      cloud.fields[0].count = 1;
+      cloud.fields[0].datatype = sensor_msgs::PointField::FLOAT32;
+
+      cloud.fields[1].offset = 4;
+      cloud.fields[1].name = "y";
+      cloud.fields[1].count = 1;
+      cloud.fields[1].datatype = sensor_msgs::PointField::FLOAT32;
+
+      cloud.fields[2].offset = 8;
+      cloud.fields[2].name = "z";
+      cloud.fields[2].count = 1;
+      cloud.fields[2].datatype = sensor_msgs::PointField::FLOAT32;
+
+      cloud.fields[3].offset = 12;
+      cloud.fields[3].name = "intensity";
+      cloud.fields[3].count = 1;
+      cloud.fields[3].datatype = sensor_msgs::PointField::UINT32;
+
+      cloud.fields[4].offset = 16;
+      cloud.fields[4].name = "timestamp";
+      cloud.fields[4].count = 1;
+      cloud.fields[4].datatype = sensor_msgs::PointField::FLOAT64;
+
+      cloud.point_step = 24;
+      cloud.row_step = cloud.width * cloud.point_step;
+      cloud.data.resize(cloud.row_step * cloud.height);
+
+      for (size_t i = 0; i < num; i++)
+      {
+        memcpy(&cloud.data[0] + i * 16, &p_point_data[i].pt3d.x, 4);
+        memcpy(&cloud.data[0] + i * 16 + 4, &p_point_data[i].pt3d.y, 4);
+        memcpy(&cloud.data[0] + i * 16 + 8, &p_point_data[i].pt3d.z, 4);
+        memcpy(&cloud.data[0] + i * 16 + 12, &p_point_data[i].reflectivity, 4);
+        memcpy(&cloud.data[0] + i * 16 + 16, &p_point_data[i].timestamp, 8);
+      }
+      cloud.header.stamp.sec = data->timestamp / 1000000000;
+      cloud.header.stamp.nsec = data->timestamp % 1000000000;
+      argdata->pub_pointcloud.publish(cloud);
+
+#endif
+
+
   }
   if (argdata->output_custommsg)
   {
@@ -152,7 +211,7 @@ void LogDataCallback(uint32_t handle, const uint8_t dev_type, char *data, int le
 
 int main(int argc, char **argv)
 {
-  ros::init(argc, argv, "Lidar_M300");
+  ros::init(argc, argv, "Lidar_S300");
   ros::NodeHandle nh("~");
   ArgData argdata;
 

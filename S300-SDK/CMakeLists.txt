@@ -76,4 +76,7 @@ ELSEIF (WIN32)
   source_group("Include" FILES ${HEADER_FILES})
   my_add_executable(PointCloudAndImu ${SOURCE_FILES} ${HEADER_FILES} ${PROJECT_SOURCE_DIR}/samples/PointCloudAndImu.cpp)
   my_add_executable(CommandControl ${SOURCE_FILES} ${HEADER_FILES} ${PROJECT_SOURCE_DIR}/samples/CommandControl.cpp)
+  
+  target_link_libraries(PointCloudAndImu  ws2_32 )
+  target_link_libraries(CommandControl  ws2_32 )
 ENDIF ()

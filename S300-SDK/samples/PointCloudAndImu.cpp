@@ -13,18 +13,18 @@ void PointCloudCallback(uint32_t handle, const uint8_t dev_type, onePoi* data, u
     memcpy(p_point_data,data,sizeof(onePoi)*num);
 
 	//printf("%d\n",num);
-	// if(idx==0)
-	// {
-	// 	lasttime= SystemAPI::GetTimeStamp_us(true);
-	// }
+	if(idx==0)
+	{
+		lasttime= SystemAPI::GetTimeStamp_us(true);
+	}
 
-	// if(idx%20==0 && idx!=0)
-	// {
-	// 	uint64_t timetsamp = SystemAPI::GetTimeStamp_us(true);
-	// 	printf("111:%d %d\n",timetsamp-lasttime,idx);
-	// 	lasttime=timetsamp;
-	// }
-	// idx++;
+	if(idx%20==0 && idx!=0)
+	{
+		uint64_t timetsamp = SystemAPI::GetTimeStamp_us(true);
+		printf("frame status:%d %d\n",timetsamp-lasttime,idx);
+		lasttime=timetsamp;
+	}
+	idx++;
 	
 	// for(int i=0;i<num;i++)
 	// {
