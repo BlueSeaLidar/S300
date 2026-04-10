@@ -42,6 +42,7 @@ namespace BaseAPI {
 }
 
 namespace SystemAPI{
+int open_socket_port();
 int open_socket_port(int port,bool isRepeat);
 int open_tcp_socket_port(const char* lidar_tcp_ip,int lidar_tcp_port);
 

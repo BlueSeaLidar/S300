@@ -68,15 +68,17 @@ typedef struct
 #ifdef ROS_VERSION_MAJOR
 
 #endif
+#include <chrono>
 onePoi *p_point_data = NULL;
+// using namespace std::chrono;
+// time_point<steady_clock> last_time_;
+// int count_;
 void PointCloudCallback(uint32_t handle, const uint8_t dev_type, onePoi *data,uint16_t num, void *client_data)
 {
   if (data == nullptr)
   {
     return;
   }
-  // printf("point cloud handle: %u, data_num: %d, data_type: %d, length: %d, frame_counter: %d\n",
-  // handle, data->dot_num, data->data_type, data->length, data->frame_cnt);
   if (p_point_data == NULL)
     p_point_data = new onePoi[num];
 
@@ -120,14 +122,26 @@ void PointCloudCallback(uint32_t handle, const uint8_t dev_type, onePoi *data,ui
 
       for (size_t i = 0; i < num; i++)
       {
-        memcpy(&cloud.data[0] + i * 16, &p_point_data[i].pt3d.x, 4);
-        memcpy(&cloud.data[0] + i * 16 + 4, &p_point_data[i].pt3d.y, 4);
-        memcpy(&cloud.data[0] + i * 16 + 8, &p_point_data[i].pt3d.z, 4);
-        memcpy(&cloud.data[0] + i * 16 + 12, &p_point_data[i].reflectivity, 4);
-        memcpy(&cloud.data[0] + i * 16 + 16, &p_point_data[i].timestamp, 8);
+        memcpy(&cloud.data[0] + i * 24, &p_point_data[i].pt3d.x, 4);
+        memcpy(&cloud.data[0] + i * 24 + 4, &p_point_data[i].pt3d.y, 4);
+        memcpy(&cloud.data[0] + i * 24 + 8, &p_point_data[i].pt3d.z, 4);
+        memcpy(&cloud.data[0] + i * 24 + 12, &p_point_data[i].reflectivity, 4);
+        memcpy(&cloud.data[0] + i * 24 + 16, &p_point_data[i].timestamp, 8);
       }
       cloud.header.stamp.sec = data->timestamp / 1000000;
       cloud.header.stamp.nanosec = data->timestamp % 1000000;
+
+
+      // auto now = steady_clock::now();
+      //   auto duration = duration_cast<std::chrono::milliseconds>(now - last_time_).count();
+      //   last_time_ = now;
+      //   count_++;
+
+      //   // 每10次打印一次平均间隔（验证是否真的10Hz执行）
+      //   if (count_ % 10 == 0) {
+      //       printf("回调平均间隔: %ld ms, 理论10Hz应为100ms\n", duration);
+      //   }
+
       argdata->pub_pointcloud->publish(cloud);
     }
     if (argdata->output_custommsg)

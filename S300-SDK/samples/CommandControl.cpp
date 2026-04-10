@@ -76,27 +76,31 @@ int main()
 	}
 
 #endif
-#if 0
+#if 1
 	/***********************set imu acc and gyro******************/
-	bool ret_acc = PaceCatLidarSDK::getInstance()->SetImuAcc(devID, ACC_4);
+	bool ret_acc = PaceCatLidarSDK::getInstance()->SetImuAcc(devID, ACC_2);
 	printf("set imu acc %s\n",ret_acc?"ok":"ng");
-	bool ret_gyro = PaceCatLidarSDK::getInstance()->SetImuGyro(devID, GYRO_62_5);
+	bool ret_gyro = PaceCatLidarSDK::getInstance()->SetImuGyro(devID, GYRO_125);
 	printf("set imu gyro %s\n",ret_gyro?"ok":"ng");
 
-	bool ret_filterlevel = PaceCatLidarSDK::getInstance()->SetIMUFilterLevel(devID, SAMPLE_RATE_DIV40,SAMPLE_RATE_DIV40);
+	bool ret_filterlevel = PaceCatLidarSDK::getInstance()->SetIMUFilterLevel(devID, SAMPLE_RATE_DIV4,SAMPLE_RATE_DIV4);
 	printf("set imu filter level %s\n",ret_filterlevel?"ok":"ng");
 	bool ret_samplerate = PaceCatLidarSDK::getInstance()->SetIMUSampleRate(devID, FREQ_200HZ);
 	printf("set imu sample rate %s\n",ret_samplerate?"ok":"ng");
 
+	bool ret_algofilterlevel = PaceCatLidarSDK::getInstance()->SetIMUAlgoFilterLevel(devID, 70);
+	printf("set imu algo filter level %s\n",ret_algofilterlevel?"ok":"ng");
+
 	ImuInfo imuinfo;
 	bool ret_query_imu = PaceCatLidarSDK::getInstance()->QueryIMUInfo(devID,imuinfo);
-	printf("query imu range:%s  acc_range:%u gyro_range:%u acc_filter_level:%u gyro_filter_level:%u sample_rate:%u imu_model:%s\n",
+	printf("query imu range:%s  acc_range:%u gyro_range:%u acc_filter_level:%u gyro_filter_level:%u sample_rate:%u  algo_filter_level:%f imu_model:%s\n",
 		ret_query_imu?"ok":"ng",
 		imuinfo.acc_range,
 		imuinfo.gyro_range,
 		imuinfo.acc_filter_level,
 		imuinfo.gyro_filter_level,
 		imuinfo.sample_rate,
+		imuinfo.algo_filter_level,
 		imuinfo.imu_model.c_str());
 #endif
 

@@ -30,7 +30,7 @@ enum IMUGYRO
 
 enum IMU_FILTERLEVEL
 {
-    SAMPLE_RATE_DIV2=0,
+    SAMPLE_RATE_DIV2 = 0,
     SAMPLE_RATE_DIV4,
     SAMPLE_RATE_DIV5,
     SAMPLE_RATE_DIV8,
@@ -41,12 +41,11 @@ enum IMU_FILTERLEVEL
 };
 enum IMU_SAMPLERATE
 {
-    FREQ_25HZ=0,
+    FREQ_25HZ = 0,
     FREQ_50HZ,
     FREQ_100HZ,
     FREQ_200HZ
 };
-
 
 #pragma pack(push, 1)
 typedef struct
@@ -123,7 +122,14 @@ typedef struct tag_soc_dis_pt_data
     uint8_t reflect; // 当前回波的反射率
     uint8_t label;   // 保留，跟点云测量到的实际物体有关，如雨雾、灰尘等
 } soc_dis_pt_data_t;
-
+typedef struct
+{
+    uint16_t distance; // 当前回波的距离值
+    int16_t x;
+    int16_t y;
+    int16_t z;
+    uint8_t reflect; // 当前回波的反射率
+} soc_dis_pt_data_t_v1;
 typedef struct
 {
     uint8_t crc8_header;
@@ -236,12 +242,13 @@ struct DEV_CFG_ST
     uint8_t imu_type;
     uint8_t imu_acc_scale : 4;
     uint8_t imu_gyr_scale : 4;
-    uint8_t imu_acc_filter:4;
-    uint8_t imu_gyr_filter:4;
+    uint8_t imu_acc_filter : 4;
+    uint8_t imu_gyr_filter : 4;
     uint8_t imu_odr;
     /* imu_type 为 板载 IMU 时有效 */
     uint8_t inner_imu_type; /* 0: LSM6D3TR, 1: ICM42688 , 2: ICM42652 */
-    uint8_t reserve[408];
+    float imu_algo_filter_level;
+    uint8_t reserve[404];
 };
 typedef struct
 {
@@ -294,7 +301,7 @@ typedef struct
         };
         uint32_t events;
     };
-}PROCOTOL_ALARM_EVENTS_ST;
+} PROCOTOL_ALARM_EVENTS_ST;
 
 typedef struct
 {
@@ -303,7 +310,7 @@ typedef struct
     uint8_t reserve;
     PROCOTOL_ALARM_EVENTS_ST events; /* 报警事件 */
     uint8_t reserved[300];
-}PROTOCOL_DATA_PACK_ALARM_ST;
+} PROTOCOL_DATA_PACK_ALARM_ST;
 
 #pragma pack(pop)
 typedef void (*LidarCloudPointCallback)(uint32_t handle, const uint8_t dev_type, onePoi *data, uint16_t num, void *client_data);

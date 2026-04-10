@@ -388,6 +388,28 @@ int SystemAPI::open_socket_port(int port, bool isRepeat)
 	}
 	return fd_udp;
 }
+int SystemAPI::open_socket_port()
+{
+#ifdef _WIN32
+	WSADATA wsda; //   Structure   to   store   info
+	WSAStartup(MAKEWORD(2, 2), &wsda);
+#endif // _WIN32
+	int fd_udp = static_cast<int>(socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP));
+	if (fd_udp <= 0)
+	{
+		return -1;
+	}
+
+	int rcvbufsize = 1024 * 1024 * 10;
+	setsockopt(fd_udp, SOL_SOCKET, SO_RCVBUF, (char *)&rcvbufsize, sizeof(rcvbufsize));
+
+	// DWORD nTimeout = 500;
+	// int ret = setsockopt(fd_udp, SOL_SOCKET, SO_RCVTIMEO, (const char*)&nTimeout, sizeof(nTimeout));
+	int time_out = 1000;
+	setsockopt(fd_udp, SOL_SOCKET, SO_RCVTIMEO, (char *)&time_out, sizeof(time_out));
+	return fd_udp;
+}
+
 
 int SystemAPI::closefd(int __fd, bool isSocket)
 {

@@ -26,7 +26,7 @@ typedef uint32_t in_addr_t;
 #include"../3rdparty/concurrentqueue/concurrentqueue.h"
 using namespace moodycamel;
 #define LOG_TIMER 2
-#define S300_E_SDKVERSION "V1.7.7_2026030501" // SDK版本号
+#define S300_E_SDKVERSION "V1.7.9_2026040701" // SDK版本号
 
 
 typedef struct
@@ -194,6 +194,7 @@ struct ImuInfo
 	uint8_t acc_filter_level;
 	uint8_t gyro_filter_level;
 	uint8_t sample_rate;
+	float algo_filter_level;
 	std::string imu_model;
 };
 enum IMU_MODEL
@@ -287,6 +288,10 @@ public:
 	*/
 	bool SetIMUSampleRate(int ID,uint8_t sample_rate);
 	/*
+	*	range0-100  default 70
+	*/
+	bool SetIMUAlgoFilterLevel(int ID,float filter_level);
+	/*
 	 *	query imu range param   acc/gyro
 	 */
 	bool QueryIMUInfo(int ID, ImuInfo&imuinfo);
@@ -303,6 +308,7 @@ private:
 
 	std::string GetErrorEvent(PROCOTOL_ALARM_EVENTS_ST *syseventlog);
 	in_addr_t get_interface_ip(const char *ifname);
+	uint16_t get_one_frame_packet_num(int upload_type, int version_minor);
 private:
 	static PaceCatLidarSDK *m_sdk;
 	PaceCatLidarSDK();

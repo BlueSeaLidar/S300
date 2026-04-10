@@ -148,7 +148,7 @@ bool PaceCatLidarSDK::ConnectLidar(int ID)
 		WriteLogData(lidar->ID, MSG_ERROR, (char *)err.c_str(), err.size());
 		return false;
 	}
-	lidar->udp_cmd_fd = SystemAPI::open_socket_port(lidar->lidar_port, false);
+	lidar->udp_cmd_fd = SystemAPI::open_socket_port();
 	if (lidar->udp_cmd_fd <= 0)
 	{
 		std::string err = "udp cmd port open failed";
@@ -458,24 +458,25 @@ bool PaceCatLidarSDK::QueryIMUInfo(int ID, ImuInfo &imuinfo)
 			imuinfo.acc_filter_level = cfg->imu_acc_filter;
 			imuinfo.gyro_filter_level = cfg->imu_gyr_filter;
 			imuinfo.sample_rate = cfg->imu_odr;
-			imuinfo.imu_model = cfg->inner_imu_type<=1?"ICM42688":"ICM42652";
+			imuinfo.imu_model = cfg->inner_imu_type <= 1 ? "ICM42688" : "ICM42652";
+			imuinfo.algo_filter_level = cfg->imu_algo_filter_level;
 			return true;
 		}
 	}
 	return false;
 }
-bool PaceCatLidarSDK::SetIMUFilterLevel(int ID, uint8_t acc_filter_level,uint8_t gyro_filter_level)
+bool PaceCatLidarSDK::SetIMUFilterLevel(int ID, uint8_t acc_filter_level, uint8_t gyro_filter_level)
 {
 	RunConfig *lidar = getConfig(ID);
 	if (lidar == nullptr)
 		return false;
 
-	if (acc_filter_level > SAMPLE_RATE_DIV40||gyro_filter_level>SAMPLE_RATE_DIV40)
+	if (acc_filter_level > SAMPLE_RATE_DIV40 || gyro_filter_level > SAMPLE_RATE_DIV40)
 		return false;
 
-	char cmd[2]={0};
-	cmd[0]=acc_filter_level;
-	cmd[1]=gyro_filter_level;
+	char cmd[2] = {0};
+	cmd[0] = acc_filter_level;
+	cmd[1] = gyro_filter_level;
 	std::string send_buf = BaseAPI::generate_cmd2(20, 2, cmd);
 	int recv_len;
 	char recv_buf[1024] = {0};
@@ -488,16 +489,18 @@ bool PaceCatLidarSDK::SetIMUFilterLevel(int ID, uint8_t acc_filter_level,uint8_t
 	}
 	return false;
 }
-bool PaceCatLidarSDK::SetIMUSampleRate(int ID, uint8_t sample_rate)
+
+bool PaceCatLidarSDK::SetIMUAlgoFilterLevel(int ID, float filter_level)
 {
 	RunConfig *lidar = getConfig(ID);
 	if (lidar == nullptr)
 		return false;
 
-	if (sample_rate > FREQ_200HZ)
+	if (filter_level > 100 || filter_level <0)
 		return false;
 
-	std::string send_buf = BaseAPI::generate_cmd2(21, 1, (char*)&sample_rate);
+	
+	std::string send_buf = BaseAPI::generate_cmd2(22, 4, (char*)&filter_level);
 	int recv_len;
 	char recv_buf[1024] = {0};
 	bool ret = CommunicationAPI::udp_talk_pack(lidar->udp_cmd_fd, lidar->lidar_ip.c_str(), lidar->lidar_port, send_buf.size(), send_buf.c_str(), recv_len, recv_buf, 10, 50000);
@@ -511,11 +514,27 @@ bool PaceCatLidarSDK::SetIMUSampleRate(int ID, uint8_t sample_rate)
 }
 
 
+bool PaceCatLidarSDK::SetIMUSampleRate(int ID, uint8_t sample_rate)
+{
+	RunConfig *lidar = getConfig(ID);
+	if (lidar == nullptr)
+		return false;
 
+	if (sample_rate > FREQ_200HZ)
+		return false;
 
-
-
-
+	std::string send_buf = BaseAPI::generate_cmd2(21, 1, (char *)&sample_rate);
+	int recv_len;
+	char recv_buf[1024] = {0};
+	bool ret = CommunicationAPI::udp_talk_pack(lidar->udp_cmd_fd, lidar->lidar_ip.c_str(), lidar->lidar_port, send_buf.size(), send_buf.c_str(), recv_len, recv_buf, 10, 50000);
+	if (ret)
+	{
+		uint8_t code;
+		memcpy(&code, recv_buf, sizeof(code));
+		return code == 0 ? true : false;
+	}
+	return false;
+}
 
 int PaceCatLidarSDK::QueryIDByIp(std::string ip)
 {
@@ -595,16 +614,14 @@ void PaceCatLidarSDK::UDPThreadParse(int id)
 	int LH_WIDTH = 360;
 	// judge   single echo  or double  echo;
 	int upload_type = getbit(cfg->dev_cfg.upload_point_clound_en, 0) * 1 + getbit(cfg->dev_cfg.upload_point_clound_en, 1) * 2 + getbit(cfg->dev_cfg.upload_point_clound_en, 2) * 4;
-	int one_frame_packet_num = 450;
 	if (upload_type == 1)
 		LH_HEIGHT = 150;
 	else if (upload_type == 2)
 		LH_HEIGHT = 75;
-	else if(upload_type == 4)
+	else if (upload_type == 4)
 	{
 		LH_WIDTH = 180;
 		LH_HEIGHT = 75;
-		one_frame_packet_num=180;
 	}
 	oneFramePoi = new onePoi[LH_HEIGHT * LH_WIDTH];
 	int lastFrameidx = 0;
@@ -616,6 +633,10 @@ void PaceCatLidarSDK::UDPThreadParse(int id)
 	debuginfo.pointcloud_packet_idx = -1;
 	debuginfo.timer = LOG_TIMER * 1000000000ULL; // 定时检测时间
 	debuginfo.system_timestamp_last = SystemAPI::GetTimeStamp_us(true) * 1000;
+
+	uint16_t one_pixel_len = sizeof(soc_dis_pt_data_t);
+	uint16_t one_pixel_len_v1 = sizeof(soc_dis_pt_data_t_v1);
+
 	while (cfg->run_state != QUIT)
 	{
 		// 每间隔一段时间对点云数据,imu数据判定是否存在发送数据异常的情况
@@ -659,7 +680,7 @@ void PaceCatLidarSDK::UDPThreadParse(int id)
 		}
 		if ((unsigned char)recv_buf[0] != 0x5A || (unsigned char)recv_buf[1] != 0xA5)
 			continue;
-		if (head->data_type == 0x01 || head->data_type == 0x0E|| head->data_type == 0x0C)
+		if (head->data_type == 0x01 || head->data_type == 0x0E || head->data_type == 0x0C)
 		{
 			soc_protocol_data_t *pro_data = (soc_protocol_data_t *)(recv_buf + sizeof(soc_head_t));
 			uint16_t start_row = pro_data->row;
@@ -667,26 +688,35 @@ void PaceCatLidarSDK::UDPThreadParse(int id)
 			uint32_t row = 0;
 			uint32_t col = 0;
 			uint16_t pixelcnt = pro_data->dot_num * pro_data->echo_num;
-			uint16_t one_pixel_len = sizeof(soc_dis_pt_data_t);
 
 			int head_size = sizeof(soc_head_t) + sizeof(soc_protocol_data_t);
+			int one_frame_packet_num = get_one_frame_packet_num(upload_type, pro_data->version_minor);
 			if (lastFrameidx != 0)
 			{
-				if ((pro_data->data_sequence - lastFrameidx != 1) && (lastFrameidx-pro_data->data_sequence != one_frame_packet_num-1))
+				if ((pro_data->data_sequence - lastFrameidx != 1) && (lastFrameidx - pro_data->data_sequence != one_frame_packet_num - 1))
 				{
 					std::string err = "time: " + SystemAPI::getCurrentTime() + " drop package last index: " + std::to_string(lastFrameidx) + " now index:" + std::to_string(pro_data->data_sequence);
 					WriteLogData(cfg->ID, MSG_ERROR, (char *)err.c_str(), err.size());
 				}
 			}
 			lastFrameidx = pro_data->data_sequence;
-
-			if(head->data_type == 0x0C &&start_row==0)
-				pixelcnt+=1;
-			if(head->data_type == 0x0C &&start_row==76)
-				pixelcnt-=1;	
+			// printf("%x %d %d %d %d\n",head->data_type,pro_data->dot_num , pro_data->echo_num,start_row,start_col);
+			if (pro_data->version_minor == 0)
+			{
+				if (head->data_type == 0x0C && start_row == 0)
+					pixelcnt += 1;
+				if (head->data_type == 0x0C && start_row == 76)
+					pixelcnt -= 1;
+			}
 
 			for (uint8_t j = 0; j < pixelcnt; j++)
 			{
+				soc_dis_pt_data_t *t;
+				if (pro_data->version_minor == 0)
+					t = (soc_dis_pt_data_t *)(recv_buf + head_size + j * one_pixel_len);
+				else
+					t = (soc_dis_pt_data_t *)(recv_buf + head_size + j * one_pixel_len_v1);
+
 				if (head->data_type == 0x01)
 				{
 					row = start_row + j / 4;
@@ -694,13 +724,13 @@ void PaceCatLidarSDK::UDPThreadParse(int id)
 				}
 				else if (head->data_type == 0x0E)
 				{
-					row = start_row/2 + j/4;
-                    col = start_col + j % 4;
+					row = start_row / 2 + j / 4;
+					col = start_col + j % 4;
 				}
 				else if (head->data_type == 0x0C)
 				{
-					row = start_row/2 + j / 2;
-                    col = start_col/2 + j % 2;
+					row = start_row / 2 + j / 2;
+					col = start_col / 2 + j % 2;
 				}
 				onePoi ptInfo;
 				memset(&ptInfo, 0, sizeof(onePoi));
@@ -708,17 +738,12 @@ void PaceCatLidarSDK::UDPThreadParse(int id)
 				ptInfo.col_pos = col;
 				ptInfo.timestamp = pro_data->timestamp;
 				ptInfo.nbVal = pro_data->time_type;
-				soc_dis_pt_data_t *t = (soc_dis_pt_data_t *)(recv_buf + head_size + j * one_pixel_len);
 				ptInfo.pt3d.x = (float)(t->x / 10.0f) * 2 / 100;
 				ptInfo.pt3d.y = (float)(t->y / 10.0f) * 2 / 100;
 				ptInfo.pt3d.z = (float)(t->z / 10.0f) * 2 / 100;
 				ptInfo.distance = t->distance;
 				ptInfo.reflectivity = t->reflect;
-				//if(row * LH_WIDTH + col>= LH_WIDTH*LH_HEIGHT)
-					//printf("111:%d %d %d %d\n", row * LH_WIDTH + col, row, LH_WIDTH, col);
 				memcpy(oneFramePoi + (row * LH_WIDTH + col), &ptInfo, sizeof(onePoi));
-				//printf("data_sequence:%d %d %d %d row:%d col:%d\n",pro_data->data_sequence,start_row,start_col,j,row,col);
-
 			}
 			if (pro_data->frame_flag == 2)
 			{
@@ -767,7 +792,7 @@ void PaceCatLidarSDK::UDPThreadParse(int id)
 
 void PaceCatLidarSDK::HeartThreadProc(HeartInfo &heartinfo)
 {
-	//printf("%s %d\n", __FUNCTION__, __LINE__);
+	// printf("%s %d\n", __FUNCTION__, __LINE__);
 
 #ifdef _WIN32
 	WSADATA wsda; //   Structure   to   store   info
@@ -951,4 +976,27 @@ in_addr_t PaceCatLidarSDK::get_interface_ip(const char *ifname)
 	close(fd);
 	return ((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr.s_addr;
 #endif
+}
+
+uint16_t PaceCatLidarSDK::get_one_frame_packet_num(int upload_type, int version_minor)
+{
+	if (version_minor == 0)
+	{
+		if (upload_type == 1)
+			return 450;
+		else if (upload_type == 2)
+			return 450;
+		else if (upload_type == 4)
+			return 180;
+	}
+	else
+	{
+		if (upload_type == 1)
+			return 450;
+		else if (upload_type == 2)
+			return 180;
+		else if (upload_type == 4)
+			return 90;
+	}
+	return 450;
 }

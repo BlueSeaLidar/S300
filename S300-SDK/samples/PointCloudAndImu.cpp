@@ -21,14 +21,14 @@ void PointCloudCallback(uint32_t handle, const uint8_t dev_type, onePoi* data, u
 	if(idx%20==0 && idx!=0)
 	{
 		uint64_t timetsamp = SystemAPI::GetTimeStamp_us(true);
-		printf("frame status:%d %d\n",timetsamp-lasttime,idx);
+		printf("frame status:%ld %d\n",timetsamp-lasttime,idx);
 		lasttime=timetsamp;
 	}
 	idx++;
 	
-	// for(int i=0;i<num;i++)
+	// for(uint16_t i=0;i<num;i++)
 	// {
-	// 	printf("point cloud handle: %u, idx:%d X: %lf, Y: %lf, Z: %lf, timestamp: %ld\n",
+	// 	printf("point cloud handle: %u, idx:%d X: %lf, Y: %lf, Z: %lf, timestamp: %lu\n",
 	// 	handle, i,data[i].pt3d.x, data[i].pt3d.y, data[i].pt3d.z, data[i].timestamp);
 	// }
 }
