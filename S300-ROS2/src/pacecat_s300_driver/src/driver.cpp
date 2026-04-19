@@ -60,7 +60,7 @@ typedef struct
 
   std::string lidar_ip;
   int lidar_port;
-  int local_port;
+  int listen_port;
   std::string adapter;
 
 } ArgData;
@@ -232,7 +232,7 @@ public:
 
     READ_PARAM(std::string, "lidar_ip", argdata.lidar_ip, "192.168.158.98");
     READ_PARAM(int, "lidar_port", argdata.lidar_port, 6543);
-    READ_PARAM(int, "local_port", argdata.local_port, 6668);
+    READ_PARAM(int, "listen_port", argdata.listen_port, 6668);
     // 创建发布者
     if (argdata.output_pointcloud)
     {
@@ -252,7 +252,7 @@ public:
 
     // 初始化SDK并设置回调
     PaceCatLidarSDK::getInstance()->Init(argdata.adapter);
-    devID = PaceCatLidarSDK::getInstance()->AddLidar(argdata.lidar_ip, argdata.lidar_port, argdata.local_port);
+    devID = PaceCatLidarSDK::getInstance()->AddLidar(argdata.lidar_ip, argdata.lidar_port, argdata.listen_port);
 
     PaceCatLidarSDK::getInstance()->SetPointCloudCallback(devID, PointCloudCallback, &argdata);
     PaceCatLidarSDK::getInstance()->SetImuDataCallback(devID, ImuDataCallback, &argdata);

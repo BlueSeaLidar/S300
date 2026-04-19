@@ -288,7 +288,7 @@ public:
 	*/
 	bool SetIMUSampleRate(int ID,uint8_t sample_rate);
 	/*
-	*	range0-100  default 70
+	*	range0-100  default 10
 	*/
 	bool SetIMUAlgoFilterLevel(int ID,float filter_level);
 	/*

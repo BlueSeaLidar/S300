@@ -195,7 +195,7 @@ struct DEV_CFG_ST
     uint8_t local_ip[4]; /* 本地 ip */
     uint8_t local_mask[4];
     uint8_t local_gateway[4];
-    uint16_t local_port; /* 设备控制端口 */
+    uint16_t listen_port; /* 设备控制端口 */
 
     uint8_t upload_ip[4]; /* 上传目标 ip */
     uint16_t upload_port; /* 上传目标 端口 */

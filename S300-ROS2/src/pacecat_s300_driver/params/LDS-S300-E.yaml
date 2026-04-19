@@ -10,7 +10,7 @@
     topic_custommsg: custommsg
     topic_imu: imu
     topic_pointcloud: pointcloud
-    adapter: ens38
+    adapter: eth0
 
 
 

@@ -232,7 +232,7 @@ bool PaceCatLidarSDK::QueryBaseInfo(int ID, NetWorkInfo &info)
 			memcpy(&info.host_ip, cfg->upload_ip, 4);
 			info.host_port = cfg->upload_port;
 			memcpy(&info.lidar_ip, cfg->local_ip, 4);
-			info.lidar_port = cfg->local_port;
+			info.lidar_port = cfg->listen_port;
 			return true;
 		}
 	}

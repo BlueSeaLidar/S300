@@ -41,7 +41,7 @@ typedef struct
 
   std::string lidar_ip;
   int lidar_port;
-  int local_port;
+  int listen_port;
   std::string adapter;
 } ArgData;
 
@@ -140,8 +140,6 @@ void PointCloudCallback(uint32_t handle, const uint8_t dev_type, onePoi *data, u
       argdata->pub_pointcloud.publish(cloud);
 
 #endif
-
-
   }
   if (argdata->output_custommsg)
   {
@@ -229,7 +227,7 @@ int main(int argc, char **argv)
   nh.param("lidar_ip", argdata.lidar_ip, std::string("192.168.158.98"));
 
   nh.param("lidar_port", argdata.lidar_port, 6543);
-  nh.param("local_port", argdata.local_port, 6668);
+  nh.param("listen_port", argdata.listen_port, 6668);
   nh.param("adapter", argdata.adapter, std::string("eth38"));
 
 
@@ -241,7 +239,7 @@ int main(int argc, char **argv)
     argdata.pub_imu = nh.advertise<sensor_msgs::Imu>(argdata.topic_imu, 10);
 
   PaceCatLidarSDK::getInstance()->Init(argdata.adapter);
-  int devID = PaceCatLidarSDK::getInstance()->AddLidar(argdata.lidar_ip, argdata.lidar_port, argdata.local_port);
+  int devID = PaceCatLidarSDK::getInstance()->AddLidar(argdata.lidar_ip, argdata.lidar_port, argdata.listen_port);
 
   PaceCatLidarSDK::getInstance()->SetPointCloudCallback(devID, PointCloudCallback, &argdata);
   PaceCatLidarSDK::getInstance()->SetImuDataCallback(devID, ImuDataCallback, &argdata);

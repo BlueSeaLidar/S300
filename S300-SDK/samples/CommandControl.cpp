@@ -46,10 +46,15 @@ int main()
 		host_ip_str.assign(ip_str_result2, 16);
 		printf("lidar_ip:%s lidar_imu_odrport:%d host_ip:%s  host_port:%d\n", lidar_ip_str.c_str(), info.lidar_port, host_ip_str.c_str(), info.host_port);
 	}
+	ret = PaceCatLidarSDK::getInstance()->SetWorking(devID,false);
+	if(ret)
+	{
+		printf("set stop ok\n");
+	}
 	ret = PaceCatLidarSDK::getInstance()->SetWorking(devID,true);
 	if(ret)
 	{
-		printf("set run ok\n");
+		printf("set start ok\n");
 	}
 
 #if 0
@@ -76,7 +81,7 @@ int main()
 	}
 
 #endif
-#if 1
+#if 0
 	/***********************set imu acc and gyro******************/
 	bool ret_acc = PaceCatLidarSDK::getInstance()->SetImuAcc(devID, ACC_2);
 	printf("set imu acc %s\n",ret_acc?"ok":"ng");
@@ -88,7 +93,7 @@ int main()
 	bool ret_samplerate = PaceCatLidarSDK::getInstance()->SetIMUSampleRate(devID, FREQ_200HZ);
 	printf("set imu sample rate %s\n",ret_samplerate?"ok":"ng");
 
-	bool ret_algofilterlevel = PaceCatLidarSDK::getInstance()->SetIMUAlgoFilterLevel(devID, 70);
+	bool ret_algofilterlevel = PaceCatLidarSDK::getInstance()->SetIMUAlgoFilterLevel(devID, 10);
 	printf("set imu algo filter level %s\n",ret_algofilterlevel?"ok":"ng");
 
 	ImuInfo imuinfo;
